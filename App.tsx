@@ -24,8 +24,50 @@ const App: React.FC = () => {
 
   const {
     currentFileHandle, setCurrentFileHandle,
-    saveFile, saveFileAs, readFile, pickFile, reloadFile
+    saveFile, saveFileAs, readFile, pickFile, reloadFile,
+    restoreLastHandle
   } = useFileSystem();
+
+  // --- Auto-Load Last File ---
+  React.useEffect(() => {
+    const init = async () => {
+      const handle = await restoreLastHandle();
+      if (handle) {
+        // Check permission
+        const opts: any = { mode: 'read' };
+        if ((await (handle as any).queryPermission(opts)) === 'granted') {
+          // If granted, load immediately
+          try {
+            const file = await handle.getFile();
+            const data = await readFile(file);
+            processImportedData(data, handle);
+          } catch (e) {
+            console.error("Auto-load failed:", e);
+          }
+        } else {
+          // If prompt needed, ask user first via Dialog
+          // We need a slight delay to ensure Dialog system is ready? No, state update should work.
+          openDialog('confirm', {
+            title: '以前のファイルを開く',
+            message: `前回開いていたファイル「${handle.name}」を読み込みますか？\n（ブラウザにより権限の確認が求められます）`,
+            onConfirm: async () => {
+              try {
+                if ((await (handle as any).requestPermission(opts)) === 'granted') {
+                  const file = await handle.getFile();
+                  const data = await readFile(file);
+                  processImportedData(data, handle);
+                }
+              } catch (e) {
+                console.error("Permission request failed:", e);
+              }
+              closeDialog();
+            }
+          });
+        }
+      }
+    };
+    init();
+  }, []);
 
   // --- UI State ---
   const [currentDate, setCurrentDate] = useState(new Date());

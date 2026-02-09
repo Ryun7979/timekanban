@@ -1,5 +1,6 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { ExportData } from '../types';
+import { saveFileHandle, getLastFileHandle } from '../utils/db';
 
 export const useFileSystem = () => {
     const [currentFileHandle, setCurrentFileHandle] = useState<any>(null);
@@ -104,6 +105,17 @@ export const useFileSystem = () => {
         return readFile(file);
     };
 
+    // Auto-save handle to DB when it changes
+    useEffect(() => {
+        if (currentFileHandle) {
+            saveFileHandle(currentFileHandle);
+        }
+    }, [currentFileHandle]);
+
+    const restoreLastHandle = async () => {
+        return await getLastFileHandle();
+    };
+
     return {
         currentFileHandle,
         setCurrentFileHandle,
@@ -111,6 +123,7 @@ export const useFileSystem = () => {
         saveFileAs,
         readFile,
         pickFile,
-        reloadFile
+        reloadFile,
+        restoreLastHandle
     };
 };
