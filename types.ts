@@ -49,5 +49,17 @@ export interface DialogOptions {
   tasks?: Task[];
 }
 
+
+export interface ExportData {
+  meta: {
+    version: string;
+    exportedAt: string;
+  };
+  appName: string;
+  appIcon: string;
+  categories: Category[];
+  tasks: Task[];
+}
+
 export type ViewMode = '1month' | '3months' | '6months';
 export type GroupByMode = 'category' | 'assignee';

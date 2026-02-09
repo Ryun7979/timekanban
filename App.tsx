@@ -1,6 +1,6 @@
 
-import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { Task, Category, DialogType, DialogOptions, DragGhost, ViewMode, GroupByMode } from './types';
+import React, { useState, useRef, useMemo } from 'react';
+import { Task, DialogType, DialogOptions, DragGhost, ViewMode, GroupByMode } from './types';
 import { TimelineGrid } from './components/Timeline/TimelineGrid';
 import { Dialog } from './components/UI/Dialog';
 import { TaskForm } from './components/TaskForm';
@@ -9,55 +9,28 @@ import { CalendarPicker } from './components/UI/CalendarPicker';
 import { PromptForm } from './components/UI/PromptForm';
 import { SettingsForm } from './components/SettingsForm';
 import { APP_ICONS } from './utils/icons';
-
-// Initial Data
-const INITIAL_CATEGORIES: Category[] = [
-  { id: 'c1', name: 'カテゴリ１' },
-  { id: 'c2', name: 'カテゴリ２' },
-];
-
-const INITIAL_TASKS: Task[] = [];
-
-const DEFAULT_APP_NAME = "まだ決まってない予定";
-const DEFAULT_APP_ICON = "kanban";
+import { useKanbanData } from './hooks/useKanbanData';
+import { useFileSystem } from './hooks/useFileSystem';
+import { INITIAL_TASKS, INITIAL_CATEGORIES, DEFAULT_APP_NAME, DEFAULT_APP_ICON } from './utils/constants';
 
 const App: React.FC = () => {
-  // --- State ---
-  const [tasks, setTasks] = useState<Task[]>(() => {
-    try {
-      const saved = localStorage.getItem('kanban-tasks');
-      return saved ? JSON.parse(saved) : INITIAL_TASKS;
-    } catch (e) {
-      console.error("Failed to load tasks from localStorage", e);
-      return INITIAL_TASKS;
-    }
-  });
+  // --- Hooks ---
+  const {
+    tasks, setTasks,
+    categories, setCategories,
+    appName, setAppName,
+    appIcon, setAppIcon
+  } = useKanbanData();
 
-  const [categories, setCategories] = useState<Category[]>(() => {
-    try {
-      const saved = localStorage.getItem('kanban-categories');
-      return saved ? JSON.parse(saved) : INITIAL_CATEGORIES;
-    } catch (e) {
-      console.error("Failed to load categories from localStorage", e);
-      return INITIAL_CATEGORIES;
-    }
-  });
+  const {
+    currentFileHandle, setCurrentFileHandle,
+    saveFile, saveFileAs, readFile, pickFile, reloadFile
+  } = useFileSystem();
 
-  const [appName, setAppName] = useState(() => {
-    return localStorage.getItem('kanban-app-name') || DEFAULT_APP_NAME;
-  });
-
-  const [appIcon, setAppIcon] = useState(() => {
-    return localStorage.getItem('kanban-app-icon') || DEFAULT_APP_ICON;
-  });
-
+  // --- UI State ---
   const [currentDate, setCurrentDate] = useState(new Date());
   const [viewMode, setViewMode] = useState<ViewMode>('1month');
   const [groupBy, setGroupBy] = useState<GroupByMode>('category');
-
-  // File System Handle for Quick Save
-  // Note: Using 'any' because FileSystemFileHandle types might not be globally available in all TS environments
-  const [currentFileHandle, setCurrentFileHandle] = useState<any>(null);
 
   // Drag & Drop (Task)
   const [dragGhost, setDragGhost] = useState<DragGhost | null>(null);
@@ -73,23 +46,6 @@ const App: React.FC = () => {
 
   // File Import Ref (Fallback)
   const fileInputRef = useRef<HTMLInputElement>(null);
-
-  // --- Effects for Persistence ---
-  useEffect(() => {
-    localStorage.setItem('kanban-tasks', JSON.stringify(tasks));
-  }, [tasks]);
-
-  useEffect(() => {
-    localStorage.setItem('kanban-categories', JSON.stringify(categories));
-  }, [categories]);
-
-  useEffect(() => {
-    localStorage.setItem('kanban-app-name', appName);
-  }, [appName]);
-
-  useEffect(() => {
-    localStorage.setItem('kanban-app-icon', appIcon);
-  }, [appIcon]);
 
   // --- Helpers ---
   const openDialog = (type: DialogType, options: DialogOptions = {}) => {
@@ -148,18 +104,6 @@ const App: React.FC = () => {
     try {
       const data = getExportData();
 
-      let jsonString: string;
-      try {
-        jsonString = JSON.stringify(data, null, 2);
-      } catch (e) {
-        throw new Error("データのJSON変換に失敗しました。");
-      }
-
-      const blob = new Blob([jsonString], { type: 'application/json' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-
       const now = new Date();
       const y = now.getFullYear();
       const m = String(now.getMonth() + 1).padStart(2, '0');
@@ -170,12 +114,10 @@ const App: React.FC = () => {
       const timestamp = `${y}-${m}-${d}_${h}-${min}-${s}`;
 
       const safeAppName = appName ? appName.replace(/[\\/:*?"<>|]/g, '').replace(/\s+/g, '_') : 'backup';
+      const filename = `${safeAppName}_${timestamp}.json`;
 
-      a.download = `${safeAppName}_${timestamp}.json`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
+      saveFileAs(data, filename);
+
     } catch (error: any) {
       console.error("Export Error:", error);
       openDialog('alert', {
@@ -194,14 +136,7 @@ const App: React.FC = () => {
 
     try {
       const data = getExportData();
-      const jsonString = JSON.stringify(data, null, 2);
-
-      // Create a writable stream to the file
-      const writable = await currentFileHandle.createWritable();
-      // Write the contents
-      await writable.write(jsonString);
-      // Close the file
-      await writable.close();
+      await saveFile(data);
 
       // Optional: show success toast here if desired.
       console.log("File saved successfully.");
@@ -240,105 +175,74 @@ const App: React.FC = () => {
     }
   };
 
+  const processImportedData = (data: any, fileHandle: any = null) => {
+    try {
+      if (!data || typeof data !== 'object') {
+        throw new Error("データ形式が無効です。");
+      }
+
+      const missingFields = [];
+      if (!Array.isArray(data.categories)) missingFields.push("categories");
+      if (!Array.isArray(data.tasks)) missingFields.push("tasks");
+
+      if (missingFields.length > 0) {
+        throw new Error(`必要なデータが含まれていません: ${missingFields.join(', ')}`);
+      }
+
+      openDialog('confirm', {
+        title: 'データのインポート',
+        message: `「${data.appName || 'バックアップデータ'}」を読み込みますか？\n\n・タスク数: ${data.tasks.length}件\n・カテゴリ数: ${data.categories.length}件\n\n※現在のデータは完全に上書きされます。`,
+        onConfirm: () => {
+          try {
+            if (data.appName) setAppName(data.appName);
+            if (data.appIcon) setAppIcon(data.appIcon);
+            setCategories(data.categories);
+            setTasks(data.tasks);
+
+            // Store the handle on success
+            setCurrentFileHandle(fileHandle);
+
+            closeDialog();
+          } catch (updateError) {
+            console.error("Update State Error:", updateError);
+            openDialog('alert', { title: 'エラー', message: 'データの反映中にエラーが発生しました。' });
+          }
+        }
+      });
+    } catch (err: any) {
+      console.error("Import Validation Error:", err);
+      openDialog('alert', {
+        title: 'インポートエラー',
+        message: `データを読み込めませんでした。\n原因: ${err.message}`
+      });
+    }
+  };
+
   const importDataFromFile = (file: File, fileHandle: any = null) => {
     if (file.type && file.type !== 'application/json' && !file.name.endsWith('.json')) {
       openDialog('alert', { title: 'エラー', message: 'JSONファイルを選択してください。' });
       return;
     }
 
-    const reader = new FileReader();
-
-    reader.onload = (event) => {
-      try {
-        const json = event.target?.result;
-        if (typeof json !== 'string') {
-          throw new Error("ファイルの読み込み結果が不正です。");
-        }
-
-        const data = JSON.parse(json);
-
-        if (!data || typeof data !== 'object') {
-          throw new Error("データ形式が無効です。");
-        }
-
-        const missingFields = [];
-        if (!Array.isArray(data.categories)) missingFields.push("categories");
-        if (!Array.isArray(data.tasks)) missingFields.push("tasks");
-
-        if (missingFields.length > 0) {
-          throw new Error(`必要なデータが含まれていません: ${missingFields.join(', ')}`);
-        }
-
-        openDialog('confirm', {
-          title: 'データのインポート',
-          message: `「${data.appName || 'バックアップデータ'}」を読み込みますか？\n\n・タスク数: ${data.tasks.length}件\n・カテゴリ数: ${data.categories.length}件\n\n※現在のデータは完全に上書きされます。`,
-          onConfirm: () => {
-            try {
-              if (data.appName) setAppName(data.appName);
-              if (data.appIcon) setAppIcon(data.appIcon);
-              setCategories(data.categories);
-              setTasks(data.tasks);
-
-              // Store the handle on success
-              setCurrentFileHandle(fileHandle);
-
-              closeDialog();
-            } catch (updateError) {
-              console.error("Update State Error:", updateError);
-              openDialog('alert', { title: 'エラー', message: 'データの反映中にエラーが発生しました。' });
-            }
-          }
-        });
-      } catch (err: any) {
-        console.error("Import Error:", err);
-        openDialog('alert', {
-          title: 'インポートエラー',
-          message: `ファイルを読み込めませんでした。\n原因: ${err.message}`
-        });
-      }
-    };
-
-    reader.onerror = () => {
-      openDialog('alert', { title: '読み込みエラー', message: 'ファイルの読み取り時にエラーが発生しました。' });
-    };
-
-    try {
-      reader.readAsText(file);
-    } catch (readError: any) {
-      openDialog('alert', { title: 'エラー', message: 'ファイルの読み込みを開始できませんでした。' });
-    }
+    readFile(file)
+      .then(data => processImportedData(data, fileHandle))
+      .catch(() => {
+        openDialog('alert', { title: '読み込みエラー', message: 'ファイルの読み込みを開始できませんでした。' });
+      });
   };
 
-  const handleImportClick = async () => {
-    let usedFilePicker = false;
-    // Check if File System Access API is supported
-    if ('showOpenFilePicker' in window) {
-      try {
-        const [fileHandle] = await (window as any).showOpenFilePicker({
-          types: [
-            {
-              description: 'JSON Files',
-              accept: {
-                'application/json': ['.json'],
-              },
-            },
-          ],
-          multiple: false
-        });
-        const file = await fileHandle.getFile();
-        importDataFromFile(file, fileHandle);
-        usedFilePicker = true;
-      } catch (err: any) {
-        // User cancelled or error
-        if (err.name === 'AbortError') {
-          return;
-        }
-        console.warn("File Picker API failed (likely security restriction), falling back to input:", err);
-        // Fallthrough to input click
-      }
-    }
 
-    if (!usedFilePicker) {
+  const handleImportClick = async () => {
+    try {
+      const { file, handle } = await pickFile();
+      importDataFromFile(file, handle);
+    } catch (err: any) {
+      // User cancelled or error
+      if (err.name === 'AbortError') {
+        return;
+      }
+      console.warn("File Picker API failed (likely security restriction), falling back to input:", err);
+
       // Fallback to input element
       if (fileInputRef.current) {
         fileInputRef.current.value = ''; // Reset file input
@@ -351,6 +255,28 @@ const App: React.FC = () => {
     const file = e.target.files?.[0];
     if (file) {
       importDataFromFile(file, null); // No handle available via input
+    }
+  };
+
+  const handleReload = async () => {
+    if (!currentFileHandle) return;
+
+    try {
+      const data = await reloadFile();
+      processImportedData(data, currentFileHandle);
+    } catch (error: any) {
+      console.error("Reload Error:", error);
+      let message = `ファイルの読み込み中にエラーが発生しました。\n${error.message || '不明なエラー'}`;
+
+      if (error.name === 'NotFoundError') {
+        message = "参照先のファイルが見つかりません。移動または削除された可能性があります。";
+        setCurrentFileHandle(null); // Link broken
+      }
+
+      openDialog('alert', {
+        title: 'リロードエラー',
+        message: message
+      });
     }
   };
 
@@ -699,8 +625,8 @@ const App: React.FC = () => {
               <button
                 onClick={handleQuickSave}
                 className={`p-1.5 rounded-full transition-colors ${currentFileHandle
-                    ? 'text-blue-500 hover:text-blue-700 hover:bg-blue-50'
-                    : 'text-slate-400 hover:text-blue-600 hover:bg-slate-100'
+                  ? 'text-blue-500 hover:text-blue-700 hover:bg-blue-50'
+                  : 'text-slate-400 hover:text-blue-600 hover:bg-slate-100'
                   }`}
                 title={currentFileHandle ? "上書き保存" : "保存 (名前を付けて保存)"}
               >
@@ -708,6 +634,21 @@ const App: React.FC = () => {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" />
                 </svg>
               </button>
+
+              <button
+                onClick={handleReload}
+                disabled={!currentFileHandle}
+                className={`p-1.5 rounded-full transition-colors ${currentFileHandle
+                  ? 'text-slate-400 hover:text-green-600 hover:bg-slate-100'
+                  : 'text-slate-300 cursor-not-allowed'
+                  }`}
+                title={currentFileHandle ? "最新の状態に更新 (リロード)" : "リロード (ファイル未保存)"}
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                </svg>
+              </button>
+              <div className="h-5 w-px bg-slate-200 mx-1"></div>
 
               <button
                 onClick={handleExport}
@@ -718,6 +659,7 @@ const App: React.FC = () => {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
                 </svg>
               </button>
+
               <button
                 onClick={handleImportClick}
                 className="p-1.5 text-slate-400 hover:text-green-600 hover:bg-slate-100 rounded-full transition-colors"
@@ -751,14 +693,19 @@ const App: React.FC = () => {
                 </svg>
               </button>
 
-              <div
-                className="flex items-center justify-center gap-2 px-3 py-1.5 bg-white rounded-md min-w-[160px] shadow-sm cursor-default"
-                title="表示中の期間"
+              <button
+                onClick={() => {
+                  setDialogType('calendar');
+                  setDialogProps({
+                    tasks,
+                    onConfirm: (d) => { if (d) setCurrentDate(new Date(d)); closeDialog(); }
+                  });
+                  setDialogOpen(true);
+                }}
+                className="w-40 py-2 bg-white rounded-md shadow-sm font-bold text-slate-700 hover:text-blue-600 transition-colors text-center"
               >
-                <span className="font-semibold text-slate-700 text-sm select-none">
-                  {getPeriodLabel()}
-                </span>
-              </div>
+                {getPeriodLabel()}
+              </button>
 
               <button
                 onClick={() => navigateDate('next')}
@@ -769,145 +716,110 @@ const App: React.FC = () => {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                 </svg>
               </button>
+            </div>
 
-              <div className="w-px h-5 bg-slate-300 mx-1"></div>
-
+            {/* View Mode Switching */}
+            <div className="flex bg-slate-100 p-1 rounded-lg">
               <button
-                onClick={() => setCurrentDate(new Date())}
-                className="px-3 py-1 text-xs font-bold bg-white text-blue-600 border border-slate-200 rounded hover:bg-blue-50 transition-colors"
+                onClick={() => setViewMode('1month')}
+                className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-all ${viewMode === '1month' ? 'bg-white shadow-sm text-blue-600' : 'text-slate-500 hover:text-slate-700'}`}
               >
-                今日
+                1ヶ月
+              </button>
+              <button
+                onClick={() => setViewMode('3months')}
+                className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-all ${viewMode === '3months' ? 'bg-white shadow-sm text-blue-600' : 'text-slate-500 hover:text-slate-700'}`}
+              >
+                3ヶ月
+              </button>
+              <button
+                onClick={() => setViewMode('6months')}
+                className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-all ${viewMode === '6months' ? 'bg-white shadow-sm text-blue-600' : 'text-slate-500 hover:text-slate-700'}`}
+              >
+                6ヶ月
               </button>
             </div>
 
-            {/* View Mode & Group Switcher */}
-            <div className="flex items-center gap-2">
-              {/* Category/Assignee Toggle */}
-              <div className="flex items-center bg-slate-100 p-1 rounded-lg">
-                <button
-                  onClick={() => setGroupBy('category')}
-                  className={`px-3 py-1.5 text-xs font-medium rounded-md transition-all flex items-center gap-1 ${groupBy === 'category'
-                      ? 'bg-white text-blue-600 shadow-sm'
-                      : 'text-slate-500 hover:text-slate-700'
-                    }`}
-                >
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 10h16M4 14h16M4 18h16" />
-                  </svg>
-                  カテゴリ別
-                </button>
-                <button
-                  onClick={() => setGroupBy('assignee')}
-                  className={`px-3 py-1.5 text-xs font-medium rounded-md transition-all flex items-center gap-1 ${groupBy === 'assignee'
-                      ? 'bg-white text-blue-600 shadow-sm'
-                      : 'text-slate-500 hover:text-slate-700'
-                    }`}
-                >
-                  <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                  </svg>
-                  担当者別
-                </button>
-              </div>
-
-              {/* Date Range Toggle */}
-              <div className="flex items-center bg-slate-100 p-1 rounded-lg hidden lg:flex">
-                {(['1month', '3months', '6months'] as ViewMode[]).map((mode) => (
-                  <button
-                    key={mode}
-                    onClick={() => setViewMode(mode)}
-                    className={`px-3 py-1.5 text-xs font-medium rounded-md transition-all ${viewMode === mode
-                        ? 'bg-white text-blue-600 shadow-sm'
-                        : 'text-slate-500 hover:text-slate-700'
-                      }`}
-                  >
-                    {mode === '1month' ? '1ヶ月' : mode === '3months' ? '3ヶ月' : '6ヶ月'}
-                  </button>
-                ))}
-              </div>
+            {/* Group By Switching */}
+            <div className="flex bg-slate-100 p-1 rounded-lg">
+              <button
+                onClick={() => setGroupBy('category')}
+                className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-all ${groupBy === 'category' ? 'bg-white shadow-sm text-blue-600' : 'text-slate-500 hover:text-slate-700'}`}
+              >
+                カテゴリ
+              </button>
+              <button
+                onClick={() => setGroupBy('assignee')}
+                className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-all ${groupBy === 'assignee' ? 'bg-white shadow-sm text-blue-600' : 'text-slate-500 hover:text-slate-700'}`}
+              >
+                担当者
+              </button>
             </div>
           </div>
 
-          {/* Right: Actions */}
-          <div className="flex justify-end gap-2 w-full xl:w-auto xl:flex-1">
+          <div className="flex items-center justify-end gap-2 w-full xl:w-auto xl:flex-1">
             <Button
               onClick={() => handleCreateTask(new Date().toISOString().split('T')[0], categories[0]?.id || '')}
-              className="text-sm shadow-md"
+              className="flex items-center gap-1 whitespace-nowrap"
             >
-              + タスク追加
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+              </svg>
+              タスク追加
             </Button>
-            {groupBy === 'category' && (
-              <Button onClick={addCategory} variant="secondary" className="text-sm">
-                + カテゴリ追加
-              </Button>
-            )}
           </div>
-
         </div>
       </header>
 
-      {/* Main Board Container */}
-      <main className="flex-1 flex overflow-hidden w-full">
+      {/* Main Content: Timeline & Sidebar */}
+      <div className="flex flex-1 overflow-hidden">
+        <main className="flex-1 overflow-hidden relative">
+          <TimelineGrid
+            tasks={tasks}
+            columns={timelineColumns}
+            currentDate={currentDate}
+            viewMode={viewMode}
+            groupBy={groupBy}
+            onCellClick={handleCreateTask}
+            onTaskClick={handleEditTask}
+            onTaskMove={moveTask}
+            onCategoryAdd={addCategory}
+            onCategoryUpdate={updateCategory}
+            onCategoryDelete={deleteCategory}
+            setDragGhost={setDragGhost}
+            dragGhost={dragGhost}
+          />
+        </main>
 
-        {/* Left: Timeline Area */}
-        <div className="flex-1 flex flex-col min-w-0 relative">
-          <div className="flex-1 overflow-x-auto overflow-y-hidden p-4">
-            <div className="h-full min-w-max">
-              <TimelineGrid
-                currentDate={currentDate}
-                columns={timelineColumns}
-                groupBy={groupBy}
-                tasks={tasks}
-                onTaskClick={handleEditTask}
-                onCellClick={handleCreateTask}
-                onTaskMove={moveTask}
-                onCategoryUpdate={updateCategory}
-                onCategoryDelete={deleteCategory}
-                dragGhost={dragGhost}
-                setDragGhost={setDragGhost}
-                viewMode={viewMode}
-              />
-            </div>
+        {/* Right Sidebar (Calendar) */}
+        <aside className="w-80 bg-white border-l border-slate-200 flex flex-col hidden xl:flex z-20 shadow-[-4px_0_15px_-3px_rgb(0_0_0_/_0.05)]">
+          <div className="p-4 border-b border-slate-100 font-bold text-slate-500 flex items-center gap-2">
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+            </svg>
+            カレンダー
           </div>
-        </div>
-
-        {/* Right: Sidebar (Calendar) */}
-        <div className="w-[320px] border-l border-slate-200 bg-white flex-shrink-0 flex flex-col shadow-lg z-20">
-          <div className="p-4 border-b border-slate-100 bg-slate-50/50">
-            <h3 className="text-sm font-bold text-slate-700 flex items-center gap-2">
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-              </svg>
-              カレンダー
-            </h3>
-          </div>
-          <div className="p-4 overflow-y-auto flex-1">
+          <div className="flex-1 overflow-y-auto p-4 custom-scrollbar">
             <CalendarPicker
               initialDate={currentDate}
               tasks={tasks}
-              onSelect={(dateStr) => {
-                const currentSelectedStr = currentDate.toISOString().split('T')[0];
-                if (dateStr === currentSelectedStr) {
-                  handleCreateTask(dateStr, categories[0]?.id || '');
-                } else {
-                  setCurrentDate(new Date(dateStr));
-                }
-              }}
+              onSelect={(dateStr) => setCurrentDate(new Date(dateStr))}
             />
           </div>
-        </div>
+        </aside>
+      </div>
 
-      </main>
-
-      {/* Global Dialog */}
-      <Dialog
-        isOpen={dialogOpen}
-        title={dialogProps.title || (dialogType === 'task-form' ? (dialogProps.task?.id ? 'タスクの編集' : '新規タスク') : 'お知らせ')}
-        onClose={closeDialog}
-        width={dialogType === 'task-form' ? 'max-w-xl' : dialogType === 'calendar' ? 'max-w-md' : 'max-w-sm'}
-      >
-        {renderDialogContent()}
-      </Dialog>
+      {/* Dialogs */}
+      {dialogOpen && (
+        <Dialog
+          isOpen={dialogOpen}
+          onClose={closeDialog}
+          title={dialogProps.title || (dialogType === 'task-form' ? (dialogProps.task?.id ? 'タスク編集' : '新規タスク') : '')}
+          width={dialogType === 'task-form' ? 'max-w-xl' : undefined}
+        >
+          {renderDialogContent()}
+        </Dialog>
+      )}
     </div>
   );
 };
