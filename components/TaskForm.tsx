@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { Task, Category, Subtask } from '../types';
 import { Button } from './UI/Button';
-import { generateSubtasks } from '../services/geminiService';
+
 import { COLORS_LIST } from '../utils/colors';
 
 interface TaskFormProps {
@@ -21,25 +21,19 @@ export const TaskForm: React.FC<TaskFormProps> = ({ initialTask, categories, onS
   const [color, setColor] = useState(initialTask?.color || 'bg-blue-500');
   const [subtasks, setSubtasks] = useState<Subtask[]>(initialTask?.subtasks || []);
   const [isCompleted, setIsCompleted] = useState(initialTask?.isCompleted || false);
-  const [isGenerating, setIsGenerating] = useState(false);
-  
+
+
   // Drag & Drop state
   const [draggedSubtaskIndex, setDraggedSubtaskIndex] = useState<number | null>(null);
 
   // If subtasks exist, rely on their status, not isCompleted flag for UI logic.
   useEffect(() => {
     if (subtasks.length > 0 && isCompleted) {
-        setIsCompleted(false);
+      setIsCompleted(false);
     }
   }, [subtasks.length, isCompleted]);
 
-  const handleAIHelp = async () => {
-    if (!title) return;
-    setIsGenerating(true);
-    const newSubtasks = await generateSubtasks(title, description);
-    setSubtasks([...subtasks, ...newSubtasks.map(s => ({ ...s, id: crypto.randomUUID() }))]);
-    setIsGenerating(false);
-  };
+
 
   const addSubtask = () => {
     setSubtasks([...subtasks, { id: crypto.randomUUID(), title: '', completed: false }]);
@@ -62,9 +56,9 @@ export const TaskForm: React.FC<TaskFormProps> = ({ initialTask, categories, onS
   };
 
   const toggleManualCompletion = (e: React.MouseEvent) => {
-      e.preventDefault();
-      e.stopPropagation();
-      setIsCompleted(!isCompleted);
+    e.preventDefault();
+    e.stopPropagation();
+    setIsCompleted(!isCompleted);
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -89,7 +83,7 @@ export const TaskForm: React.FC<TaskFormProps> = ({ initialTask, categories, onS
     // Set a transparent drag image or let default handle image show
   };
 
-  const handleDragOver = (e: React.DragEvent, index: number) => {
+  const handleDragOver = (e: React.DragEvent) => {
     e.preventDefault();
     e.dataTransfer.dropEffect = "move";
   };
@@ -98,14 +92,14 @@ export const TaskForm: React.FC<TaskFormProps> = ({ initialTask, categories, onS
     e.preventDefault();
     if (draggedSubtaskIndex === null) return;
     if (draggedSubtaskIndex === dropIndex) {
-        setDraggedSubtaskIndex(null);
-        return;
+      setDraggedSubtaskIndex(null);
+      return;
     }
 
     const newSubtasks = [...subtasks];
     const [movedItem] = newSubtasks.splice(draggedSubtaskIndex, 1);
     newSubtasks.splice(dropIndex, 0, movedItem);
-    
+
     setSubtasks(newSubtasks);
     setDraggedSubtaskIndex(null);
   };
@@ -155,16 +149,16 @@ export const TaskForm: React.FC<TaskFormProps> = ({ initialTask, categories, onS
             <label className="block text-sm font-medium text-slate-700 mb-1">責任者</label>
             <div className="relative">
               <span className="absolute left-3 top-2.5 text-slate-400">
-                 <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                    <path fillRule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clipRule="evenodd" />
-                 </svg>
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                  <path fillRule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clipRule="evenodd" />
+                </svg>
               </span>
               <input
-                  type="text"
-                  className="w-full pl-10 px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
-                  value={assignee}
-                  onChange={(e) => setAssignee(e.target.value)}
-                  placeholder="担当者名"
+                type="text"
+                className="w-full pl-10 px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                value={assignee}
+                onChange={(e) => setAssignee(e.target.value)}
+                placeholder="担当者名"
               />
             </div>
           </div>
@@ -199,16 +193,9 @@ export const TaskForm: React.FC<TaskFormProps> = ({ initialTask, categories, onS
           <div className="flex justify-between items-center mb-3">
             <label className="text-sm font-medium text-slate-700">チェックリスト</label>
             <div className="flex gap-2">
-              <button 
-                type="button" 
-                onClick={handleAIHelp}
-                disabled={!title || isGenerating}
-                className="text-xs bg-purple-100 text-purple-700 px-2 py-1 rounded hover:bg-purple-200 flex items-center gap-1 transition-colors"
-              >
-                 {isGenerating ? '思考中...' : '✨ AI提案'}
-              </button>
-              <button 
-                type="button" 
+
+              <button
+                type="button"
                 onClick={addSubtask}
                 className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded hover:bg-blue-200 transition-colors"
               >
@@ -216,55 +203,54 @@ export const TaskForm: React.FC<TaskFormProps> = ({ initialTask, categories, onS
               </button>
             </div>
           </div>
-          
+
           <div className="space-y-2 max-h-52 overflow-y-auto pr-1">
             {subtasks.length === 0 && (
-                <div className="py-6 text-center border-2 border-dashed border-slate-200 rounded-lg bg-white/50">
-                    <p className="text-xs text-slate-400 italic mb-3">チェックリスト項目がありません</p>
-                    
-                    <button
-                        type="button"
-                        onClick={toggleManualCompletion}
-                        className={`px-4 py-2 rounded-full text-sm font-bold transition-all shadow-sm flex items-center gap-2 mx-auto cursor-pointer select-none ${
-                            isCompleted 
-                            ? 'bg-emerald-100 text-emerald-700 hover:bg-emerald-200 border border-emerald-200' 
-                            : 'bg-white text-slate-600 hover:bg-slate-50 border border-slate-300'
-                        }`}
-                    >
-                        {isCompleted ? (
-                            <>
-                                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
-                                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                                </svg>
-                                完了済み (クリックで未完了へ)
-                            </>
-                        ) : (
-                            <>
-                                <span className="w-4 h-4 rounded-full border border-slate-400"></span>
-                                このタスクを完了にする
-                            </>
-                        )}
-                    </button>
-                    {isCompleted && <p className="text-[10px] text-emerald-600 mt-2 font-medium">✨ Ready! マークが表示されます</p>}
-                </div>
+              <div className="py-6 text-center border-2 border-dashed border-slate-200 rounded-lg bg-white/50">
+                <p className="text-xs text-slate-400 italic mb-3">チェックリスト項目がありません</p>
+
+                <button
+                  type="button"
+                  onClick={toggleManualCompletion}
+                  className={`px-4 py-2 rounded-full text-sm font-bold transition-all shadow-sm flex items-center gap-2 mx-auto cursor-pointer select-none ${isCompleted
+                    ? 'bg-emerald-100 text-emerald-700 hover:bg-emerald-200 border border-emerald-200'
+                    : 'bg-white text-slate-600 hover:bg-slate-50 border border-slate-300'
+                    }`}
+                >
+                  {isCompleted ? (
+                    <>
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                        <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                      </svg>
+                      完了済み (クリックで未完了へ)
+                    </>
+                  ) : (
+                    <>
+                      <span className="w-4 h-4 rounded-full border border-slate-400"></span>
+                      このタスクを完了にする
+                    </>
+                  )}
+                </button>
+                {isCompleted && <p className="text-[10px] text-emerald-600 mt-2 font-medium">✨ Ready! マークが表示されます</p>}
+              </div>
             )}
             {subtasks.map((st, index) => (
-              <div 
-                key={st.id} 
+              <div
+                key={st.id}
                 className={`flex items-center gap-2 group p-1 rounded transition-colors ${draggedSubtaskIndex === index ? 'bg-slate-100 opacity-60 border border-dashed border-slate-300' : 'hover:bg-white border border-transparent'}`}
-                onDragOver={(e) => handleDragOver(e, index)}
+                onDragOver={handleDragOver}
                 onDrop={(e) => handleDrop(e, index)}
               >
                 {/* Drag Handle */}
-                <div 
-                    className="text-slate-300 cursor-grab hover:text-slate-500 p-1 flex-shrink-0"
-                    draggable
-                    onDragStart={(e) => handleDragStart(e, index)}
-                    title="ドラッグして並び替え"
+                <div
+                  className="text-slate-300 cursor-grab hover:text-slate-500 p-1 flex-shrink-0"
+                  draggable
+                  onDragStart={(e) => handleDragStart(e, index)}
+                  title="ドラッグして並び替え"
                 >
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8h16M4 16h16" />
-                    </svg>
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8h16M4 16h16" />
+                  </svg>
                 </div>
 
                 <input
@@ -280,19 +266,19 @@ export const TaskForm: React.FC<TaskFormProps> = ({ initialTask, categories, onS
                   className="flex-1 text-sm bg-transparent border-b border-transparent focus:border-slate-300 outline-none min-w-[100px]"
                   placeholder="タスク項目..."
                 />
-                
+
                 {/* サブタスク担当者入力 */}
                 <div className="flex items-center gap-1 bg-slate-100 rounded px-2 py-1 flex-shrink-0">
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3 text-slate-400" viewBox="0 0 20 20" fill="currentColor">
-                        <path fillRule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clipRule="evenodd" />
-                    </svg>
-                    <input
-                        type="text"
-                        value={st.assignee || ''}
-                        onChange={(e) => updateSubtaskAssignee(st.id, e.target.value)}
-                        className="w-20 bg-transparent text-xs text-slate-600 outline-none placeholder-slate-400"
-                        placeholder="担当者"
-                    />
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3 text-slate-400" viewBox="0 0 20 20" fill="currentColor">
+                    <path fillRule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clipRule="evenodd" />
+                  </svg>
+                  <input
+                    type="text"
+                    value={st.assignee || ''}
+                    onChange={(e) => updateSubtaskAssignee(st.id, e.target.value)}
+                    className="w-20 bg-transparent text-xs text-slate-600 outline-none placeholder-slate-400"
+                    placeholder="担当者"
+                  />
                 </div>
 
                 <button

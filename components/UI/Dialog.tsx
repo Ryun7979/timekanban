@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef } from 'react';
 
 interface DialogProps {
   isOpen: boolean;
@@ -31,7 +31,7 @@ export const Dialog: React.FC<DialogProps> = ({ isOpen, title, children, onClose
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-sm transition-opacity p-4">
-      <div 
+      <div
         ref={dialogRef}
         className={`bg-white rounded-xl shadow-2xl w-full ${width} transform transition-all flex flex-col max-h-[90vh]`}
         role="dialog"
@@ -40,7 +40,7 @@ export const Dialog: React.FC<DialogProps> = ({ isOpen, title, children, onClose
       >
         <div className="flex justify-between items-center p-6 border-b border-slate-100">
           <h2 id="dialog-title" className="text-xl font-bold text-slate-800">{title}</h2>
-          <button 
+          <button
             onClick={onClose}
             className="text-slate-400 hover:text-slate-600 transition-colors p-1 rounded-full hover:bg-slate-100"
           >
@@ -49,7 +49,7 @@ export const Dialog: React.FC<DialogProps> = ({ isOpen, title, children, onClose
             </svg>
           </button>
         </div>
-        
+
         <div className="p-6 overflow-y-auto custom-scrollbar">
           {children}
         </div>
