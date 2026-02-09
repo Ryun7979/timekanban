@@ -294,9 +294,37 @@ export const TaskForm: React.FC<TaskFormProps> = ({ initialTask, categories, onS
         </div>
       </div>
 
-      <div className="flex justify-end gap-3 pt-2 border-t border-slate-100">
-        <Button type="button" variant="secondary" onClick={onCancel}>キャンセル</Button>
-        <Button type="submit">保存</Button>
+      <div className="flex justify-between items-center pt-2 border-t border-slate-100">
+        <div>
+          {initialTask?.id && (
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={() => {
+                // Duplicate Logic
+                const duplicatedSubtasks = subtasks.map(s => ({ ...s, id: crypto.randomUUID() }));
+                onSubmit({
+                  title: `${title} (コピー)`,
+                  description,
+                  date,
+                  categoryId,
+                  subtasks: duplicatedSubtasks,
+                  assignee,
+                  color,
+                  isCompleted: false, // Reset completion status for new task
+                  // id is undefined to trigger creation
+                });
+              }}
+              title="この内容で新しいタスクを作成します"
+            >
+              複製
+            </Button>
+          )}
+        </div>
+        <div className="flex gap-3">
+          <Button type="button" variant="secondary" onClick={onCancel}>キャンセル</Button>
+          <Button type="submit">保存</Button>
+        </div>
       </div>
     </form>
   );
