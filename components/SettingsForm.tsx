@@ -19,21 +19,8 @@ export const SettingsForm: React.FC<SettingsFormProps> = ({ currentName, current
 
     return (
         <form onSubmit={(e) => { e.preventDefault(); onSave(name, icon); }} className="space-y-6">
-            
-            {/* File Info Section */}
-            <div className="bg-slate-50 p-3 rounded-lg border border-slate-200 mb-4">
-                <label className="block text-xs font-bold text-slate-500 uppercase mb-1">現在編集中のファイル</label>
-                <div className="flex items-center gap-2 text-sm text-slate-700 font-mono break-all">
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-slate-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                    </svg>
-                    {currentFileName ? (
-                        <span className="font-semibold">{currentFileName}</span>
-                    ) : (
-                        <span className="text-slate-400 italic">未保存 (新規またはメモリ内)</span>
-                    )}
-                </div>
-            </div>
+
+
 
             <div className="space-y-2">
                 <label className="block text-sm font-medium text-slate-700">タイトル</label>
@@ -46,11 +33,11 @@ export const SettingsForm: React.FC<SettingsFormProps> = ({ currentName, current
                     onChange={(e) => setName(e.target.value)}
                     placeholder="最大30文字"
                 />
-                 <div className="text-right text-xs text-slate-400">
+                <div className="text-right text-xs text-slate-400">
                     {name.length} / 30
                 </div>
             </div>
-            
+
             <div className="space-y-2">
                 <label className="block text-sm font-medium text-slate-700">アイコン</label>
                 <div className="grid grid-cols-5 gap-2">
@@ -59,11 +46,10 @@ export const SettingsForm: React.FC<SettingsFormProps> = ({ currentName, current
                             key={iconKey}
                             type="button"
                             onClick={() => setIcon(iconKey)}
-                            className={`p-3 rounded-lg border-2 flex items-center justify-center transition-all ${
-                                icon === iconKey 
-                                ? 'border-blue-500 bg-blue-50 text-blue-600' 
+                            className={`p-3 rounded-lg border-2 flex items-center justify-center transition-all ${icon === iconKey
+                                ? 'border-blue-500 bg-blue-50 text-blue-600'
                                 : 'border-slate-100 bg-white text-slate-400 hover:border-slate-300'
-                            }`}
+                                }`}
                         >
                             {APP_ICONS[iconKey]}
                         </button>
@@ -88,6 +74,23 @@ export const SettingsForm: React.FC<SettingsFormProps> = ({ currentName, current
                     </Button>
                 </div>
             )}
+
+            {/* File Info Footer (Moved) */}
+            <div className="mb-4 pt-4 text-center border-t border-dashed border-slate-200">
+                <div className="text-xs text-slate-500 font-mono break-all leading-tight">
+                    {currentFileName ? (
+                        <>
+                            <div className="font-bold mb-1">現在編集中のファイル:</div>
+                            <div className="bg-slate-50 p-1.5 rounded border border-slate-200 inline-block max-w-full">
+                                {currentFileName}
+                            </div>
+
+                        </>
+                    ) : (
+                        <span className="italic text-slate-400">ファイル未保存</span>
+                    )}
+                </div>
+            </div>
 
             <div className="flex justify-end gap-3 pt-4 border-t border-slate-100">
                 <Button type="button" variant="secondary" onClick={onCancel}>キャンセル</Button>
