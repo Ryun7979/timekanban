@@ -1,0 +1,5 @@
+{
+  "name": "TimeKanban0.1.4",
+  "description": "AIによるタスク支援機能を備えた垂直タイムラインカンバンボード。ガントチャートの視認性とカンバンの柔軟性を組み合わせています。",
+  "requestFramePermissions": []
+}
