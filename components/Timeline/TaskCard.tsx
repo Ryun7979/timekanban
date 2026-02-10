@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Task } from '../../types';
 import { getColorDef } from '../../utils/colors';
@@ -12,7 +11,7 @@ interface TaskCardProps {
   isCompact?: boolean;
 }
 
-export const TaskCard: React.FC<TaskCardProps> = ({ task, onClick, onDragStart, onDragEnd, isCompact = false }) => {
+export const TaskCard: React.FC<TaskCardProps> = React.memo(({ task, onClick, onDragStart, onDragEnd, isCompact = false }) => {
   const completedSubtasks = (task.subtasks || []).filter(s => s.completed).length;
   const totalSubtasks = task.subtasks?.length || 0;
 
@@ -28,8 +27,6 @@ export const TaskCard: React.FC<TaskCardProps> = ({ task, onClick, onDragStart, 
   const isAllCompleted = isSubtaskCompleted || isManualCompleted;
 
   // カラー設定（colors.ts から取得）
-  // 既存データには 'bg-blue-500' などのクラス名が入っているため、それをキーに色定義を取得
-  // 既存データには 'bg-blue-500' などのクラス名が入っているため、それをキーに色定義を取得
   const colorDef = getColorDef(task.color);
 
   if (isCompact) {
@@ -120,4 +117,4 @@ export const TaskCard: React.FC<TaskCardProps> = ({ task, onClick, onDragStart, 
       </div>
     </div>
   );
-};
+});

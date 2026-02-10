@@ -1,11 +1,11 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { ExportData } from '../types';
 import { saveFileHandle, getLastFileHandle } from '../utils/db';
 
 export const useFileSystem = () => {
     const [currentFileHandle, setCurrentFileHandle] = useState<any>(null);
 
-    const saveFileAs = (data: ExportData, filename: string) => {
+    const saveFileAs = useCallback((data: ExportData, filename: string) => {
         try {
             const jsonString = JSON.stringify(data, null, 2);
             const blob = new Blob([jsonString], { type: 'application/json' });
@@ -20,9 +20,9 @@ export const useFileSystem = () => {
         } catch (e) {
             throw new Error("データのJSON変換またはダウンロードに失敗しました。");
         }
-    };
+    }, []);
 
-    const saveFile = async (data: ExportData, options?: { checkCollision?: boolean, lastModified?: number }) => {
+    const saveFile = useCallback(async (data: ExportData, options?: { checkCollision?: boolean, lastModified?: number }) => {
         if (!currentFileHandle) {
             throw new Error("保存先のファイルが指定されていません。");
         }
@@ -31,8 +31,6 @@ export const useFileSystem = () => {
             // Conflict Detection
             if (options?.checkCollision && options.lastModified) {
                 const file = await currentFileHandle.getFile();
-                // Allow a small margin of error (e.g., 100ms) or exact match?
-                // Usually exact match is best for locking.
                 if (file.lastModified > options.lastModified) {
                     const error: any = new Error("ファイルが外部で変更されています。上書きしますか？");
                     error.name = "FileCollisionError";
@@ -41,19 +39,15 @@ export const useFileSystem = () => {
             }
 
             const jsonString = JSON.stringify(data, null, 2);
-            // Create a writable stream to the file
             const writable = await currentFileHandle.createWritable();
-            // Write the contents
             await writable.write(jsonString);
-            // Close the file
             await writable.close();
         } catch (error: any) {
-            // Re-throw to be handled by UI component
             throw error;
         }
-    };
+    }, [currentFileHandle]);
 
-    const readFile = (file: File): Promise<any> => {
+    const readFile = useCallback((file: File): Promise<any> => {
         return new Promise((resolve, reject) => {
             const reader = new FileReader();
             reader.onload = (event) => {
@@ -71,9 +65,9 @@ export const useFileSystem = () => {
             reader.onerror = () => reject(new Error("ファイルの読み取り時にエラーが発生しました。"));
             reader.readAsText(file);
         });
-    };
+    }, []);
 
-    const pickFile = async (): Promise<{ file: File, handle: any }> => {
+    const pickFile = useCallback(async (): Promise<{ file: File, handle: any }> => {
         if ('showOpenFilePicker' in window) {
             try {
                 const [handle] = await (window as any).showOpenFilePicker({
@@ -98,24 +92,13 @@ export const useFileSystem = () => {
         } else {
             throw new Error("このブラウザはファイルシステムアクセスAPIをサポートしていません。");
         }
-    };
+    }, []);
 
-    const reloadFile = async (): Promise<ExportData> => {
+    const reloadFile = useCallback(async (): Promise<ExportData> => {
         if (!currentFileHandle) throw new Error("ファイルハンドルがありません。");
-
-        // Permission check could be added here if needed
-        /*
-        const opts = { mode: 'read' };
-        if ((await currentFileHandle.queryPermission(opts)) !== 'granted') {
-           if ((await currentFileHandle.requestPermission(opts)) !== 'granted') {
-             throw new Error("ファイルの読み取り権限がありません。");
-           }
-        }
-        */
-
         const file = await currentFileHandle.getFile();
         return readFile(file);
-    };
+    }, [currentFileHandle, readFile]);
 
     // Auto-save handle to DB when it changes
     useEffect(() => {
@@ -124,9 +107,9 @@ export const useFileSystem = () => {
         }
     }, [currentFileHandle]);
 
-    const restoreLastHandle = async () => {
+    const restoreLastHandle = useCallback(async () => {
         return await getLastFileHandle();
-    };
+    }, []);
 
     return {
         currentFileHandle,

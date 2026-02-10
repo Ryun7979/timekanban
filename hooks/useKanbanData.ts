@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Task, Category, CalendarEvent } from '../types';
 import { INITIAL_CATEGORIES, INITIAL_TASKS, INITIAL_EVENTS, DEFAULT_APP_NAME, DEFAULT_APP_ICON } from '../utils/constants';
 
@@ -73,7 +73,7 @@ export const useKanbanData = () => {
     const [past, setPast] = useState<HistoryState[]>([]);
     const [future, setFuture] = useState<HistoryState[]>([]);
 
-    const updateData = (updates: { tasks?: Task[], categories?: Category[], events?: CalendarEvent[] }) => {
+    const updateData = useCallback((updates: { tasks?: Task[], categories?: Category[], events?: CalendarEvent[] }) => {
         // Save current state to past
         setPast(prev => {
             const newPast = [...prev, { tasks, categories, events }];
@@ -88,9 +88,9 @@ export const useKanbanData = () => {
 
         // Clear future
         setFuture([]);
-    };
+    }, [tasks, categories, events]);
 
-    const undo = () => {
+    const undo = useCallback(() => {
         if (past.length === 0) return null;
 
         const previous = past[past.length - 1];
@@ -104,9 +104,9 @@ export const useKanbanData = () => {
         setEvents(previous.events);
 
         return previous;
-    };
+    }, [past, tasks, categories, events]);
 
-    const redo = () => {
+    const redo = useCallback(() => {
         if (future.length === 0) return null;
 
         const next = future[0];
@@ -120,7 +120,7 @@ export const useKanbanData = () => {
         setEvents(next.events);
 
         return next;
-    };
+    }, [future, tasks, categories, events]);
 
     return {
         tasks,
