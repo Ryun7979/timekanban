@@ -1,7 +1,8 @@
 
 import React, { useEffect, useRef, useMemo } from 'react';
-import { Task, Category, DragGhost, ViewMode, GroupByMode } from '../../types';
+import { Task, Category, CalendarEvent, DragGhost, ViewMode, GroupByMode } from '../../types';
 import { TaskCard } from './TaskCard';
+import { getColorDef } from '../../utils/colors';
 
 // Category interface is sufficient for columns ({id, name})
 interface TimelineGridProps {
@@ -9,9 +10,12 @@ interface TimelineGridProps {
   columns: Category[];
   groupBy: GroupByMode;
   tasks: Task[];
+  events: CalendarEvent[];
   onTaskClick: (task: Task) => void;
+  onEventClick: (event: CalendarEvent) => void;
   onCellClick: (dateStr: string, columnId: string) => void;
   onTaskMove: (taskId: string, newDate: string, newColumnId: string) => void;
+  onEventDateUpdate: (eventId: string, newStartDate: string, newEndDate: string) => void;
   onCategoryUpdate: (id: string, name: string) => void;
   onCategoryDelete: (id: string) => void;
   onCategoryAdd: () => void;
@@ -25,9 +29,12 @@ export const TimelineGrid: React.FC<TimelineGridProps> = ({
   columns,
   groupBy,
   tasks,
+  events,
   onTaskClick,
+  onEventClick,
   onCellClick,
   onTaskMove,
+  onEventDateUpdate,
   onCategoryUpdate,
   onCategoryDelete,
   onCategoryAdd,
@@ -73,10 +80,94 @@ export const TimelineGrid: React.FC<TimelineGridProps> = ({
     e.preventDefault();
     setDragGhost(null);
     const taskId = e.dataTransfer.getData("taskId");
-    if (taskId) {
+    const eventId = e.dataTransfer.getData("eventId");
+    const dragType = e.dataTransfer.getData("dragType");
+    const dragOriginDate = e.dataTransfer.getData("dragOriginDate");
+
+    if (taskId && columnId !== 'events-column') {
       onTaskMove(taskId, dateStr, columnId);
+    } else if (eventId && columnId === 'events-column') {
+      // Event Drop
+      const event = events.find(ev => ev.id === eventId);
+      if (event) {
+        const dropDate = new Date(dateStr);
+        const startDate = new Date(event.startDate);
+        const endDate = new Date(event.endDate);
+
+        // Helper format YYYY-MM-DD
+        const toDateStr = (d: Date) => {
+          const y = d.getFullYear();
+          const m = String(d.getMonth() + 1).padStart(2, '0');
+          const day = String(d.getDate()).padStart(2, '0');
+          return `${y}-${m}-${day}`;
+        };
+
+        if (dragType === 'move') {
+          const duration = endDate.getTime() - startDate.getTime();
+
+          let newStartTimestamp = dropDate.getTime();
+          if (dragOriginDate) {
+            const origin = new Date(dragOriginDate).getTime();
+            const offset = origin - startDate.getTime();
+            newStartTimestamp = dropDate.getTime() - offset;
+          }
+
+          const newStartDate = new Date(newStartTimestamp);
+          const newEndDate = new Date(newStartTimestamp + duration);
+
+          onEventDateUpdate(eventId, toDateStr(newStartDate), toDateStr(newEndDate));
+        } else if (dragType === 'resize-start') {
+          // Check if dropDate <= endDate
+          if (dropDate <= endDate) {
+            onEventDateUpdate(eventId, dateStr, event.endDate);
+          }
+        } else if (dragType === 'resize-end') {
+          // Check if dropDate >= startDate
+          if (dropDate >= startDate) {
+            onEventDateUpdate(eventId, event.startDate, dateStr);
+          }
+        }
+      }
     }
   };
+
+  const handleEventDragStart = (e: React.DragEvent, event: CalendarEvent, type: 'move' | 'resize-start' | 'resize-end', dateStr?: string) => {
+    e.dataTransfer.setData("eventId", event.id);
+    e.dataTransfer.setData("dragType", type);
+    if (dateStr) e.dataTransfer.setData("dragOriginDate", dateStr);
+    e.stopPropagation(); // prevent bubbling to cell
+  };
+
+  // Calculate event lanes
+  const { eventLanes, maxLanes } = useMemo(() => {
+    const lanes = new Map<string, number>();
+    const sortedEvents = [...events].sort((a, b) => {
+      if (a.startDate !== b.startDate) return a.startDate.localeCompare(b.startDate);
+      // Secondary sort by duration (longer first)
+      const durA = new Date(a.endDate).getTime() - new Date(a.startDate).getTime();
+      const durB = new Date(b.endDate).getTime() - new Date(b.startDate).getTime();
+      return durB - durA;
+    });
+
+    const laneEnds: string[] = []; // Stores the busy-until date for each lane
+
+    sortedEvents.forEach(event => {
+      let laneIndex = 0;
+      // Find first available lane
+      while (true) {
+        const busyUntil = laneEnds[laneIndex];
+        if (!busyUntil || busyUntil < event.startDate) {
+          // Lane is free
+          laneEnds[laneIndex] = event.endDate;
+          lanes.set(event.id, laneIndex);
+          break;
+        }
+        laneIndex++;
+      }
+    });
+
+    return { eventLanes: lanes, maxLanes: laneEnds.length };
+  }, [events]);
 
   // Generate array of month data (Memoized)
   const monthsData = useMemo(() => {
@@ -108,6 +199,15 @@ export const TimelineGrid: React.FC<TimelineGridProps> = ({
             </div>
             <span className="text-[10px] text-slate-400 font-medium">{currentDate.getFullYear()}</span>
           </div>
+
+          {/* Event Column Header */}
+          <div
+            className="flex-shrink-0 p-2 border-r border-slate-200 flex items-center justify-center text-slate-700 bg-slate-50 font-semibold text-sm transition-all duration-300"
+            style={{ width: Math.max(96, (maxLanes * 36) + 16) + 'px' }} // Dynamic width based on lanes (36px per lane)
+          >
+            イベント
+          </div>
+
           {columns.map((col) => {
             // Count ONLY incomplete tasks for this column
             const taskCount = tasks.filter(t => {
@@ -223,6 +323,73 @@ export const TimelineGrid: React.FC<TimelineGridProps> = ({
                       {currentDayDate.toLocaleDateString('ja-JP', { weekday: 'short' })}
                     </span>
                     {isToday && <span className="text-[9px] bg-blue-100 text-blue-600 px-1.5 rounded-full mt-1">今日</span>}
+                  </div>
+
+                  {/* Event Column Cells */}
+                  <div
+                    className="flex-shrink-0 border-r border-slate-200 relative group bg-white hover:bg-slate-50 transition-colors"
+                    style={{ width: Math.max(96, (maxLanes * 36) + 16) + 'px' }}
+                    onDragOver={(e) => handleDragOver(e, dateStr, 'events-column')}
+                    onDrop={(e) => handleDrop(e, dateStr, 'events-column')}
+                  >
+                    <div className="w-full h-full relative">
+                      {events.map(event => {
+                        if (event.startDate <= dateStr && dateStr <= event.endDate) {
+                          const isStart = event.startDate === dateStr;
+                          const isEnd = event.endDate === dateStr;
+                          const colorDef = getColorDef(event.color);
+                          const laneIndex = eventLanes.get(event.id) || 0;
+
+                          // Horizontal position based on lane (36px width)
+                          const leftOffset = laneIndex * 36 + 8; // 36px per lane + 8px padding
+
+                          return (
+                            <div
+                              key={event.id}
+                              className={`absolute top-0 bottom-0 flex flex-col items-center group/event z-10`}
+                              style={{ left: `${leftOffset}px`, width: '12px' }}
+                              title={`${event.title} (${event.startDate} ~ ${event.endDate})`}
+                            >
+                              {/* Line Segment */}
+                              <div
+                                className={`w-1.5 h-full rounded-full ${colorDef.value} opacity-80 cursor-move relative transition-all hover:w-2 hover:opacity-100`}
+                                draggable
+                                onDragStart={(e) => handleEventDragStart(e, event, 'move', dateStr)}
+                                onClick={(e) => { e.stopPropagation(); onEventClick(event); }}
+                              >
+                                {isStart && (
+                                  <div
+                                    className="absolute -top-1 left-1/2 -translate-x-1/2 w-3 h-3 bg-white border-2 border-slate-400 rounded-full cursor-n-resize hover:bg-blue-100 z-20"
+                                    draggable
+                                    onDragStart={(e) => handleEventDragStart(e, event, 'resize-start')}
+                                    onClick={(e) => e.stopPropagation()}
+                                  ></div>
+                                )}
+                                {isEnd && (
+                                  <div
+                                    className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-3 h-3 bg-white border-2 border-slate-400 rounded-full cursor-s-resize hover:bg-blue-100 z-20"
+                                    draggable
+                                    onDragStart={(e) => handleEventDragStart(e, event, 'resize-end')}
+                                    onClick={(e) => e.stopPropagation()}
+                                  ></div>
+                                )}
+                              </div>
+
+                              {/* Label (Vertical writing mode) */}
+                              {(isStart || (day === 1 && event.startDate < dateStr)) && (
+                                <div
+                                  className={`absolute left-3 top-0 z-30 whitespace-nowrap text-xs font-bold text-slate-700 px-0.5 py-1.5 rounded shadow-sm border border-slate-100 pointer-events-none ${colorDef.lightBg} bg-opacity-90`}
+                                  style={{ writingMode: 'vertical-rl' }}
+                                >
+                                  {event.title}
+                                </div>
+                              )}
+                            </div>
+                          );
+                        }
+                        return null;
+                      })}
+                    </div>
                   </div>
 
                   {/* Columns (Lanes) */}

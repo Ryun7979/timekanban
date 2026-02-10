@@ -1,9 +1,10 @@
 
 import React, { useState, useRef, useMemo } from 'react';
-import { Task, Category, DialogType, DialogOptions, DragGhost, ViewMode, GroupByMode } from './types';
+import { Task, Category, CalendarEvent, DialogType, DialogOptions, DragGhost, ViewMode, GroupByMode } from './types';
 import { TimelineGrid } from './components/Timeline/TimelineGrid';
 import { Dialog } from './components/UI/Dialog';
 import { TaskForm } from './components/TaskForm';
+import { EventForm } from './components/EventForm';
 import { Button } from './components/UI/Button';
 import { CalendarPicker } from './components/UI/CalendarPicker';
 import { PromptForm } from './components/UI/PromptForm';
@@ -18,6 +19,7 @@ const App: React.FC = () => {
   const {
     tasks, setTasks,
     categories, setCategories,
+    events, setEvents,
     appName, setAppName,
     appIcon, setAppIcon,
     updateData, undo, redo
@@ -111,7 +113,7 @@ const App: React.FC = () => {
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [undo, redo, tasks, categories, autoSaveEnabled]);
+  }, [undo, redo, tasks, categories, events, autoSaveEnabled]);
 
   // --- Auto Update Polling ---
   React.useEffect(() => {
@@ -190,7 +192,7 @@ const App: React.FC = () => {
 
   // --- Import / Export Handlers ---
 
-  const getExportData = (overrides?: { tasks?: Task[], categories?: Category[] }) => {
+  const getExportData = (overrides?: { tasks?: Task[], categories?: Category[], events?: CalendarEvent[] }) => {
     return {
       meta: {
         version: '1.0',
@@ -199,11 +201,12 @@ const App: React.FC = () => {
       appName,
       appIcon,
       categories: overrides?.categories || categories,
-      tasks: overrides?.tasks || tasks
+      tasks: overrides?.tasks || tasks,
+      events: overrides?.events || events
     };
   };
 
-  const tryAutoSave = async (overrides?: { tasks?: Task[], categories?: Category[] }) => {
+  const tryAutoSave = async (overrides?: { tasks?: Task[], categories?: Category[], events?: CalendarEvent[] }) => {
     if (!autoSaveEnabled || !currentFileHandle) return;
 
     try {
@@ -368,7 +371,9 @@ const App: React.FC = () => {
           if (data.appName) setAppName(data.appName);
           if (data.appIcon) setAppIcon(data.appIcon);
           setCategories(data.categories);
+          setCategories(data.categories);
           setTasks(data.tasks);
+          if (data.events) setEvents(data.events);
 
           // Store the handle on success
           setCurrentFileHandle(fileHandle);
@@ -640,6 +645,66 @@ const App: React.FC = () => {
     tryAutoSave({ categories: newCategories });
   };
 
+  const handleCreateEvent = () => {
+    openDialog('event-form', {
+      event: {
+        id: '',
+        title: '',
+        startDate: currentDate.toISOString().split('T')[0],
+        endDate: currentDate.toISOString().split('T')[0],
+        color: 'bg-blue-500'
+      },
+      onConfirm: () => { /* handled by form */ }
+    });
+  };
+
+  const handleEditEvent = (event: CalendarEvent) => {
+    openDialog('event-form', {
+      event,
+      onConfirm: () => { /* handled by form */ }
+    });
+  };
+
+  const saveEvent = (partialEvent: Partial<CalendarEvent>) => {
+    if (!partialEvent.title) return;
+
+    if (partialEvent.id) {
+      // Update
+      const newEvents = events.map(e => e.id === partialEvent.id ? { ...e, ...partialEvent } as CalendarEvent : e);
+      updateData({ events: newEvents });
+      tryAutoSave({ events: newEvents });
+    } else {
+      // Create
+      const newEvent: CalendarEvent = {
+        ...partialEvent as CalendarEvent,
+        id: crypto.randomUUID(),
+      };
+      const newEvents = [...events, newEvent];
+      updateData({ events: newEvents });
+      tryAutoSave({ events: newEvents });
+    }
+    closeDialog();
+  };
+
+  const deleteEvent = (eventId: string) => {
+    openDialog('confirm', {
+      title: 'イベントの削除',
+      message: '本当にこのイベントを削除しますか？',
+      onConfirm: () => {
+        const newEvents = events.filter(e => e.id !== eventId);
+        updateData({ events: newEvents });
+        tryAutoSave({ events: newEvents });
+        closeDialog();
+      }
+    });
+  };
+
+  const handleUpdateEventDate = (eventId: string, newStartDate: string, newEndDate: string) => {
+    const newEvents = events.map(e => e.id === eventId ? { ...e, startDate: newStartDate, endDate: newEndDate } : e);
+    updateData({ events: newEvents });
+    tryAutoSave({ events: newEvents });
+  };
+
   const deleteCategory = (id: string) => {
     openDialog('confirm', {
       title: 'カテゴリの削除',
@@ -729,6 +794,15 @@ const App: React.FC = () => {
 
             onReset={dialogProps.onResetData}
             onCancel={closeDialog}
+          />
+        );
+      case 'event-form':
+        return (
+          <EventForm
+            initialEvent={dialogProps.event}
+            onSubmit={saveEvent}
+            onCancel={closeDialog}
+            onDelete={dialogProps.event?.id ? deleteEvent : undefined}
           />
         );
       case 'task-form':
@@ -1008,24 +1082,21 @@ const App: React.FC = () => {
                 担当者
               </button>
             </div>
-          </div>
 
-          <div className="flex items-center justify-end gap-2 w-full xl:w-auto xl:flex-1">
-            <Button
-              onClick={() => handleCreateTask(new Date().toISOString().split('T')[0], categories[0]?.id || '')}
-              className="flex items-center gap-1 whitespace-nowrap"
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-              </svg>
-              タスク追加
-            </Button>
+            <div className="flex items-center justify-end gap-2 w-full xl:w-auto xl:flex-1">
+              <Button variant="primary" onClick={() => handleCreateTask(new Date().toISOString().split('T')[0], 'todo')}>
+                + タスク追加
+              </Button>
+              <Button variant="secondary" onClick={handleCreateEvent} title="期間イベントを追加">
+                + イベント追加
+              </Button>
+            </div>
           </div>
         </div>
       </header>
 
       {/* Main Content: Timeline & Sidebar */}
-      <div className="flex flex-1 overflow-hidden">
+      < div className="flex flex-1 overflow-hidden" >
         <main className="flex-1 overflow-hidden relative">
           <TimelineGrid
             tasks={tasks}
@@ -1033,9 +1104,12 @@ const App: React.FC = () => {
             currentDate={currentDate}
             viewMode={viewMode}
             groupBy={groupBy}
-            onCellClick={handleCreateTask}
+            events={events}
             onTaskClick={handleEditTask}
+            onEventClick={handleEditEvent}
+            onCellClick={handleCreateTask}
             onTaskMove={moveTask}
+            onEventDateUpdate={handleUpdateEventDate}
             onCategoryAdd={addCategory}
             onCategoryUpdate={updateCategory}
             onCategoryDelete={deleteCategory}
@@ -1088,20 +1162,22 @@ const App: React.FC = () => {
             </div>
           </div>
         </aside>
-      </div>
+      </div >
 
       {/* Dialogs */}
-      {dialogOpen && (
-        <Dialog
-          isOpen={dialogOpen}
-          onClose={closeDialog}
-          title={dialogProps.title || (dialogType === 'task-form' ? (dialogProps.task?.id ? 'タスク編集' : '新規タスク') : '')}
-          width={dialogType === 'task-form' ? 'max-w-xl' : undefined}
-        >
-          {renderDialogContent()}
-        </Dialog>
-      )}
-    </div>
+      {
+        dialogOpen && (
+          <Dialog
+            isOpen={dialogOpen}
+            onClose={closeDialog}
+            title={dialogProps.title || (dialogType === 'task-form' ? (dialogProps.task?.id ? 'タスク編集' : '新規タスク') : '')}
+            width={dialogType === 'task-form' ? 'max-w-xl' : undefined}
+          >
+            {renderDialogContent()}
+          </Dialog>
+        )
+      }
+    </div >
   );
 };
 

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
-import { Task, Category } from '../types';
-import { INITIAL_CATEGORIES, INITIAL_TASKS, DEFAULT_APP_NAME, DEFAULT_APP_ICON } from '../utils/constants';
+import { Task, Category, CalendarEvent } from '../types';
+import { INITIAL_CATEGORIES, INITIAL_TASKS, INITIAL_EVENTS, DEFAULT_APP_NAME, DEFAULT_APP_ICON } from '../utils/constants';
 
 export const useKanbanData = () => {
     const [tasks, setTasks] = useState<Task[]>(() => {
@@ -10,6 +10,16 @@ export const useKanbanData = () => {
         } catch (e) {
             console.error("Failed to load tasks from localStorage", e);
             return INITIAL_TASKS;
+        }
+    });
+
+    const [events, setEvents] = useState<CalendarEvent[]>(() => {
+        try {
+            const saved = localStorage.getItem('kanban-events');
+            return saved ? JSON.parse(saved) : INITIAL_EVENTS;
+        } catch (e) {
+            console.error("Failed to load events from localStorage", e);
+            return INITIAL_EVENTS;
         }
     });
 
@@ -37,6 +47,10 @@ export const useKanbanData = () => {
     }, [tasks]);
 
     useEffect(() => {
+        localStorage.setItem('kanban-events', JSON.stringify(events));
+    }, [events]);
+
+    useEffect(() => {
         localStorage.setItem('kanban-categories', JSON.stringify(categories));
     }, [categories]);
 
@@ -53,15 +67,16 @@ export const useKanbanData = () => {
     interface HistoryState {
         tasks: Task[];
         categories: Category[];
+        events: CalendarEvent[];
     }
 
     const [past, setPast] = useState<HistoryState[]>([]);
     const [future, setFuture] = useState<HistoryState[]>([]);
 
-    const updateData = (updates: { tasks?: Task[], categories?: Category[] }) => {
+    const updateData = (updates: { tasks?: Task[], categories?: Category[], events?: CalendarEvent[] }) => {
         // Save current state to past
         setPast(prev => {
-            const newPast = [...prev, { tasks, categories }];
+            const newPast = [...prev, { tasks, categories, events }];
             if (newPast.length > 50) newPast.shift(); // Limit history to 50
             return newPast;
         });
@@ -69,6 +84,7 @@ export const useKanbanData = () => {
         // Update state
         if (updates.tasks) setTasks(updates.tasks);
         if (updates.categories) setCategories(updates.categories);
+        if (updates.events) setEvents(updates.events);
 
         // Clear future
         setFuture([]);
@@ -81,10 +97,11 @@ export const useKanbanData = () => {
         const newPast = past.slice(0, past.length - 1);
 
         setPast(newPast);
-        setFuture(prev => [{ tasks, categories }, ...prev]);
+        setFuture(prev => [{ tasks, categories, events }, ...prev]);
 
         setTasks(previous.tasks);
         setCategories(previous.categories);
+        setEvents(previous.events);
 
         return previous;
     };
@@ -96,10 +113,11 @@ export const useKanbanData = () => {
         const newFuture = future.slice(1);
 
         setFuture(newFuture);
-        setPast(prev => [...prev, { tasks, categories }]);
+        setPast(prev => [...prev, { tasks, categories, events }]);
 
         setTasks(next.tasks);
         setCategories(next.categories);
+        setEvents(next.events);
 
         return next;
     };
@@ -109,6 +127,8 @@ export const useKanbanData = () => {
         setTasks,
         categories,
         setCategories,
+        events,
+        setEvents,
         appName,
         setAppName,
         appIcon,

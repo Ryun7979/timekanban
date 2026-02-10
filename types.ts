@@ -7,6 +7,14 @@ export interface Subtask {
   assignee?: string;
 }
 
+export interface CalendarEvent {
+  id: string;
+  title: string;
+  startDate: string; // YYYY-MM-DD
+  endDate: string;   // YYYY-MM-DD
+  color: string;
+}
+
 export interface Task {
   id: string;
   title: string;
@@ -29,7 +37,7 @@ export interface DragGhost {
   date: string;
 }
 
-export type DialogType = 'alert' | 'confirm' | 'prompt' | 'task-form' | 'settings' | 'calendar';
+export type DialogType = 'alert' | 'confirm' | 'prompt' | 'task-form' | 'settings' | 'calendar' | 'event-form';
 
 export interface DialogOptions {
   title?: string;
@@ -37,6 +45,7 @@ export interface DialogOptions {
   onConfirm?: (value?: string) => void;
   onCancel?: () => void;
   task?: Task; // For task form
+  event?: CalendarEvent; // For event form
   defaultText?: string; // For prompt
   inputType?: string; // For prompt input type (text, date, etc.)
   // For settings
@@ -59,6 +68,7 @@ export interface ExportData {
   appIcon: string;
   categories: Category[];
   tasks: Task[];
+  events?: CalendarEvent[];
 }
 
 export type ViewMode = '1month' | '3months' | '6months';

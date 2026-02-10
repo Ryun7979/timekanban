@@ -6,6 +6,7 @@ export const INITIAL_CATEGORIES: Category[] = [
 ];
 
 export const INITIAL_TASKS: Task[] = [];
+export const INITIAL_EVENTS: any[] = [];
 
 export const DEFAULT_APP_NAME = "まだ決まってない予定";
 export const DEFAULT_APP_ICON = "kanban";
