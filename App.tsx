@@ -75,6 +75,8 @@ const App: React.FC = () => {
   const [viewMode, setViewMode] = useState<ViewMode>('1month');
   const [groupBy, setGroupBy] = useState<GroupByMode>('category');
   const [autoSaveEnabled, setAutoSaveEnabled] = useState(false);
+  const [autoUpdateEnabled, setAutoUpdateEnabled] = useState(false);
+  const lastModifiedRef = useRef<number>(0);
   const [showAutoSaveSuccess, setShowAutoSaveSuccess] = useState(false);
 
   // --- Keyboard Shortcuts (Undo/Redo) ---
@@ -109,6 +111,28 @@ const App: React.FC = () => {
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [undo, redo, tasks, categories, autoSaveEnabled]);
+
+  // --- Auto Update Polling ---
+  React.useEffect(() => {
+    if (!autoUpdateEnabled || !currentFileHandle) return;
+
+    const checkFile = async () => {
+      try {
+        const file = await currentFileHandle.getFile();
+        if (file.lastModified > lastModifiedRef.current) {
+          // File changed externally
+          console.log("File change detected, reloading...");
+          const data = await readFile(file);
+          processImportedData(data, currentFileHandle, true); // silent reload
+        }
+      } catch (e) {
+        console.warn("Auto update check failed:", e);
+      }
+    };
+
+    const interval = setInterval(checkFile, 2000);
+    return () => clearInterval(interval);
+  }, [autoUpdateEnabled, currentFileHandle, readFile]);
 
   // Drag & Drop (Task)
   const [dragGhost, setDragGhost] = useState<DragGhost | null>(null);
@@ -186,6 +210,16 @@ const App: React.FC = () => {
       await saveFile(data);
       console.log("Auto-saved successfully.");
 
+      // Update lastModifiedRef to prevent auto-reload triggering
+      if (currentFileHandle) {
+        try {
+          const file = await currentFileHandle.getFile();
+          lastModifiedRef.current = file.lastModified;
+        } catch (e) {
+          console.warn("Failed to update lastModifiedRef after auto-save", e);
+        }
+      }
+
       // Show notification
       setShowAutoSaveSuccess(true);
       setTimeout(() => setShowAutoSaveSuccess(false), 2000);
@@ -233,6 +267,16 @@ const App: React.FC = () => {
       const data = getExportData();
       await saveFile(data);
 
+      // Update lastModifiedRef
+      if (currentFileHandle) {
+        try {
+          const file = await currentFileHandle.getFile();
+          lastModifiedRef.current = file.lastModified;
+        } catch (e) {
+          console.warn("Failed to update lastModifiedRef after save", e);
+        }
+      }
+
       // Optional: show success toast here if desired.
       console.log("File saved successfully.");
 
@@ -270,7 +314,7 @@ const App: React.FC = () => {
     }
   };
 
-  const processImportedData = (data: any, fileHandle: any = null) => {
+  const processImportedData = (data: any, fileHandle: any = null, silent: boolean = false) => {
     try {
       if (!data || typeof data !== 'object') {
         throw new Error("データ形式が無効です。");
@@ -284,38 +328,47 @@ const App: React.FC = () => {
         throw new Error(`必要なデータが含まれていません: ${missingFields.join(', ')}`);
       }
 
-      openDialog('confirm', {
-        title: 'データのインポート',
-        message: `「${data.appName || 'バックアップデータ'}」を読み込みますか？\n\n・タスク数: ${data.tasks.length}件\n・カテゴリ数: ${data.categories.length}件\n\n※現在のデータは完全に上書きされます。`,
-        onConfirm: () => {
-          try {
-            if (data.appName) setAppName(data.appName);
-            if (data.appIcon) setAppIcon(data.appIcon);
-            // Use legacy setters here for bulk import without history?
-            // Actually no, allow undo of import might be dangerous if file handle changes?
-            // Let's stick to legacy Setters for initial import to avoid weird history state,
-            // OR use updateData to allow Undo.
-            // Requirement says Undo history limit 50. Import is a major change.
-            // Let's keep it as is (using setters directly) for now as it resets the app state basically.
-            setCategories(data.categories);
-            setTasks(data.tasks);
+      const applyData = () => {
+        try {
+          if (data.appName) setAppName(data.appName);
+          if (data.appIcon) setAppIcon(data.appIcon);
+          setCategories(data.categories);
+          setTasks(data.tasks);
 
-            // Store the handle on success
-            setCurrentFileHandle(fileHandle);
+          // Store the handle on success
+          setCurrentFileHandle(fileHandle);
 
-            closeDialog();
-          } catch (updateError) {
-            console.error("Update State Error:", updateError);
-            openDialog('alert', { title: 'エラー', message: 'データの反映中にエラーが発生しました。' });
+          // Update lastModifiedRef
+          if (fileHandle) {
+            fileHandle.getFile().then((f: File) => {
+              lastModifiedRef.current = f.lastModified;
+            }).catch((e: any) => console.warn("Failed to update ref", e));
           }
+
+          if (!silent) closeDialog();
+        } catch (updateError) {
+          console.error("Update State Error:", updateError);
+          if (!silent) openDialog('alert', { title: 'エラー', message: 'データの反映中にエラーが発生しました。' });
         }
-      });
+      };
+
+      if (silent) {
+        applyData();
+      } else {
+        openDialog('confirm', {
+          title: 'データのインポート',
+          message: `「${data.appName || 'バックアップデータ'}」を読み込みますか？\n\n・タスク数: ${data.tasks.length}件\n・カテゴリ数: ${data.categories.length}件\n\n※現在のデータは完全に上書きされます。`,
+          onConfirm: applyData
+        });
+      }
     } catch (err: any) {
       console.error("Import Validation Error:", err);
-      openDialog('alert', {
-        title: 'インポートエラー',
-        message: `データを読み込めませんでした。\n原因: ${err.message}`
-      });
+      if (!silent) {
+        openDialog('alert', {
+          title: 'インポートエラー',
+          message: `データを読み込めませんでした。\n原因: ${err.message}`
+        });
+      }
     }
   };
 
@@ -575,10 +628,12 @@ const App: React.FC = () => {
       currentAppIcon: appIcon,
       currentFileName: currentFileHandle?.name, // Pass the file name here
       isAutoSaveEnabled: autoSaveEnabled,
-      onSettingsSave: (name, icon, autoSave) => {
+      isAutoUpdateEnabled: autoUpdateEnabled,
+      onSettingsSave: (name, icon, autoSave, autoUpdate) => {
         setAppName(name);
         setAppIcon(icon);
         setAutoSaveEnabled(autoSave);
+        setAutoUpdateEnabled(autoUpdate);
         closeDialog();
       },
       onResetData: () => {
@@ -639,7 +694,8 @@ const App: React.FC = () => {
             currentIcon={dialogProps.currentAppIcon || DEFAULT_APP_ICON}
             currentFileName={dialogProps.currentFileName} // Pass prop
             isAutoSaveEnabled={dialogProps.isAutoSaveEnabled || false}
-            onSave={(name, icon, autoSave) => dialogProps.onSettingsSave?.(name, icon, autoSave)}
+            isAutoUpdateEnabled={dialogProps.isAutoUpdateEnabled || false}
+            onSave={(name, icon, autoSave, autoUpdate) => dialogProps.onSettingsSave?.(name, icon, autoSave, autoUpdate)}
             onReset={dialogProps.onResetData}
             onCancel={closeDialog}
           />

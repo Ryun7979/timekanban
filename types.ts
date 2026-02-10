@@ -44,7 +44,8 @@ export interface DialogOptions {
   currentAppIcon?: string;
   currentFileName?: string; // Added: Display current file name
   isAutoSaveEnabled?: boolean;
-  onSettingsSave?: (name: string, icon: string, autoSave: boolean) => void;
+  isAutoUpdateEnabled?: boolean; // Added: Auto update setting
+  onSettingsSave?: (name: string, icon: string, autoSave: boolean, autoUpdate: boolean) => void;
   onResetData?: () => void; // Callback for data reset
   // For calendar picker
   tasks?: Task[];

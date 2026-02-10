@@ -9,18 +9,20 @@ interface SettingsFormProps {
     currentIcon: string;
     currentFileName?: string;
     isAutoSaveEnabled: boolean;
-    onSave: (name: string, icon: string, autoSave: boolean) => void;
+    isAutoUpdateEnabled: boolean;
+    onSave: (name: string, icon: string, autoSave: boolean, autoUpdate: boolean) => void;
     onReset?: () => void;
     onCancel: () => void;
 }
 
-export const SettingsForm: React.FC<SettingsFormProps> = ({ currentName, currentIcon, currentFileName, isAutoSaveEnabled, onSave, onReset, onCancel }) => {
+export const SettingsForm: React.FC<SettingsFormProps> = ({ currentName, currentIcon, currentFileName, isAutoSaveEnabled, isAutoUpdateEnabled, onSave, onReset, onCancel }) => {
     const [name, setName] = useState(currentName);
     const [icon, setIcon] = useState(currentIcon);
     const [autoSave, setAutoSave] = useState(isAutoSaveEnabled);
+    const [autoUpdate, setAutoUpdate] = useState(isAutoUpdateEnabled);
 
     return (
-        <form onSubmit={(e) => { e.preventDefault(); onSave(name, icon, autoSave); }} className="space-y-6">
+        <form onSubmit={(e) => { e.preventDefault(); onSave(name, icon, autoSave, autoUpdate); }} className="space-y-6">
 
 
 
@@ -59,8 +61,7 @@ export const SettingsForm: React.FC<SettingsFormProps> = ({ currentName, current
                 </div>
             </div>
 
-            {/* Auto Save Option */}
-            <div className="flex items-center space-x-2 pt-2 pb-2">
+            <div className="flex items-center space-x-2 pt-2">
                 <input
                     type="checkbox"
                     id="autoSaveConfig"
@@ -70,6 +71,19 @@ export const SettingsForm: React.FC<SettingsFormProps> = ({ currentName, current
                 />
                 <label htmlFor="autoSaveConfig" className="text-sm font-medium text-slate-700 cursor-pointer select-none">
                     変更を自動的にファイルへ保存する
+                </label>
+            </div>
+
+            <div className="flex items-center space-x-2 pb-2">
+                <input
+                    type="checkbox"
+                    id="autoUpdateConfig"
+                    checked={autoUpdate}
+                    onChange={(e) => setAutoUpdate(e.target.checked)}
+                    className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                />
+                <label htmlFor="autoUpdateConfig" className="text-sm font-medium text-slate-700 cursor-pointer select-none">
+                    ファイルの変更を検知して自動で更新する
                 </label>
             </div>
 
