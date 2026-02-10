@@ -81,6 +81,7 @@ const App: React.FC = () => {
   const lastModifiedRef = useRef<number>(0);
   const [showAutoSaveSuccess, setShowAutoSaveSuccess] = useState(false);
   const [showAutoSaveError, setShowAutoSaveError] = useState(false);
+  const isSaving = useRef(false);
 
   // --- Keyboard Shortcuts (Undo/Redo) ---
   React.useEffect(() => {
@@ -120,6 +121,7 @@ const App: React.FC = () => {
     if (!autoUpdateEnabled || !currentFileHandle) return;
 
     const checkFile = async () => {
+      if (isSaving.current) return;
       try {
         const file = await currentFileHandle.getFile();
         if (file.lastModified > lastModifiedRef.current) {
@@ -210,6 +212,7 @@ const App: React.FC = () => {
     if (!autoSaveEnabled || !currentFileHandle) return;
 
     try {
+      isSaving.current = true;
       const data = getExportData(overrides);
       await saveFile(data, { checkCollision: true, lastModified: lastModifiedRef.current });
       console.log("Auto-saved successfully.");
@@ -235,6 +238,8 @@ const App: React.FC = () => {
         setShowAutoSaveError(true);
         setTimeout(() => setShowAutoSaveError(false), 5000);
       }
+    } finally {
+      isSaving.current = false;
     }
   };
 
@@ -273,6 +278,7 @@ const App: React.FC = () => {
     }
 
     try {
+      isSaving.current = true;
       const data = getExportData();
       await saveFile(data, { checkCollision: true, lastModified: lastModifiedRef.current });
 
@@ -349,6 +355,8 @@ const App: React.FC = () => {
           message: message
         });
       }
+    } finally {
+      isSaving.current = false;
     }
   };
 

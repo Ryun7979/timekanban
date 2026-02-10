@@ -30,7 +30,7 @@ export const Dialog: React.FC<DialogProps> = ({ isOpen, title, children, onClose
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-[1000] flex items-center justify-center bg-slate-900/50 backdrop-blur-sm transition-opacity p-4">
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-slate-900/50 backdrop-blur-sm transition-opacity p-4">
       <div
         ref={dialogRef}
         className={`bg-white rounded-xl shadow-2xl w-full ${width} transform transition-all flex flex-col max-h-[90vh]`}

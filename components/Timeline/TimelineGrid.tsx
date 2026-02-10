@@ -191,9 +191,9 @@ export const TimelineGrid: React.FC<TimelineGridProps> = ({
       <div ref={containerRef} className="overflow-auto flex-1 custom-scrollbar relative">
         <div className="min-w-full w-max">
           {/* Header Row (Sticky) */}
-          <div className="flex border-b border-slate-200 bg-slate-50 sticky top-0 z-[800] shadow-sm min-w-max">
+          <div className="flex border-b border-slate-200 bg-slate-50 sticky top-0 z-[4900] shadow-sm min-w-max">
             {/* Sticky Month Column */}
-            <div className="w-16 md:w-24 flex-shrink-0 p-2 border-r border-slate-200 flex flex-col items-center justify-center text-slate-700 bg-slate-50 sticky left-0 z-[900] shadow-[1px_0_0_0_rgba(226,232,240,1)]">
+            <div className="w-16 md:w-24 flex-shrink-0 p-2 border-r border-slate-200 flex flex-col items-center justify-center text-slate-700 bg-slate-50 sticky left-0 z-[5000] shadow-[1px_0_0_0_rgba(226,232,240,1)]">
               {monthsToShow > 1 ? (
                 <div className="flex flex-col items-center justify-center w-full">
                   <div className="text-xs md:text-sm font-bold text-slate-700 flex items-center justify-center whitespace-nowrap">
@@ -221,7 +221,7 @@ export const TimelineGrid: React.FC<TimelineGridProps> = ({
 
             {/* Sticky Event Column Header */}
             <div
-              className="flex-shrink-0 p-2 border-r border-slate-200 flex items-center justify-center text-slate-700 bg-slate-50 font-semibold text-sm transition-all duration-300 sticky left-16 md:left-24 z-[900] shadow-[1px_0_0_0_rgba(226,232,240,1)]"
+              className="flex-shrink-0 p-2 border-r border-slate-200 flex items-center justify-center text-slate-700 bg-slate-50 font-semibold text-sm transition-all duration-300 sticky left-16 md:left-24 z-[5000] shadow-[1px_0_0_0_rgba(226,232,240,1)]"
               style={{ width: Math.max(96, (maxLanes * 36) + 16) + 'px' }} // Dynamic width based on lanes (36px per lane)
             >
               イベント
@@ -230,8 +230,8 @@ export const TimelineGrid: React.FC<TimelineGridProps> = ({
             {columns.map((col) => {
               // Count ONLY incomplete tasks for this column
               const taskCount = tasks.filter(t => {
-                const totalSubtasks = t.subtasks.length;
-                const completedSubtasks = t.subtasks.filter(s => s.completed).length;
+                const totalSubtasks = t.subtasks?.length || 0;
+                const completedSubtasks = (t.subtasks || []).filter(s => s.completed).length;
 
                 const isSubtaskCompleted = totalSubtasks > 0 && completedSubtasks === totalSubtasks;
                 const isManualCompleted = totalSubtasks === 0 && (t.isCompleted || false);
@@ -317,8 +317,10 @@ export const TimelineGrid: React.FC<TimelineGridProps> = ({
             <React.Fragment key={`${monthData.year}-${monthData.month}`}>
               {/* Month Separator */}
               {viewMode !== '1month' && (
-                <div className="sticky top-[57px] z-[750] bg-slate-100/90 backdrop-blur-sm border-b border-slate-200 p-2 text-sm font-bold text-slate-600 pl-4 shadow-sm min-w-max">
-                  {monthData.year}年 {monthData.month + 1}月
+                <div className="sticky top-[57px] left-0 z-[5100] bg-slate-100/95 backdrop-blur-sm border-b border-slate-200 p-2 text-sm font-bold text-slate-600 shadow-sm min-w-max">
+                  <div className="sticky left-0 px-4 inline-block">
+                    {monthData.year}年 {String(monthData.month + 1).padStart(2, '0')}月
+                  </div>
                 </div>
               )}
 
@@ -354,11 +356,12 @@ export const TimelineGrid: React.FC<TimelineGridProps> = ({
                            - If no event start (Low Priority / Empty): Past > Future (350 - idx)
                              -> This allows past event text to overflow into empty future cells,
                                 but be covered by future cells that have events.
+                           - Base increased to 3000/4000 to prevent negative values or conflict
                         */
                         zIndex: (() => {
                           const hasEventStart = events.some(e => e.startDate === dateStr);
                           const globalDayIndex = monthIdx * 40 + dayIdx;
-                          return hasEventStart ? (400 + globalDayIndex) : (350 - globalDayIndex);
+                          return hasEventStart ? (4000 + globalDayIndex) : (3000 - globalDayIndex);
                         })()
                       }}
                       onDragOver={(e) => handleDragOver(e, dateStr, 'events-column')}
@@ -369,65 +372,68 @@ export const TimelineGrid: React.FC<TimelineGridProps> = ({
 
                       <div className="w-full h-full relative">
                         {/* Render events sorted by date (Past -> Future) so Future events are on top */}
-                        {[...events].sort((a, b) => {
-                          if (a.startDate !== b.startDate) return a.startDate.localeCompare(b.startDate);
-                          return 0;
-                        }).map(event => {
-                          if (event.startDate <= dateStr && dateStr <= event.endDate) {
-                            const isStart = event.startDate === dateStr;
-                            const isEnd = event.endDate === dateStr;
-                            const colorDef = getColorDef(event.color);
-                            const laneIndex = eventLanes.get(event.id) || 0;
+                        {[...events]
+                          .filter(e => e.startDate && e.endDate && e.startDate <= e.endDate)
+                          .sort((a, b) => {
+                            if (a.startDate !== b.startDate) return a.startDate.localeCompare(b.startDate);
+                            // Secondary sort: Later end date = Higher priority (Rendered on top)
+                            return a.endDate.localeCompare(b.endDate);
+                          }).map(event => {
+                            if (event.startDate <= dateStr && dateStr <= event.endDate) {
+                              const isStart = event.startDate === dateStr;
+                              const isEnd = event.endDate === dateStr;
+                              const colorDef = getColorDef(event.color);
+                              const laneIndex = eventLanes.get(event.id) || 0;
 
-                            // Horizontal position based on lane (36px width)
-                            const leftOffset = laneIndex * 36 + 8; // 36px per lane + 8px padding
+                              // Horizontal position based on lane (36px width)
+                              const leftOffset = laneIndex * 36 + 8; // 36px per lane + 8px padding
 
-                            return (
-                              <div
-                                key={event.id}
-                                className={`absolute top-0 bottom-0 flex flex-col items-center group/event z-10`}
-                                style={{ left: `${leftOffset}px`, width: '12px' }}
-                                title={`${event.title} (${event.startDate} ~ ${event.endDate})`}
-                              >
-                                {/* Line Segment */}
+                              return (
                                 <div
-                                  className={`w-1.5 h-full rounded-full ${colorDef.value} opacity-80 cursor-move relative transition-all hover:w-2 hover:opacity-100`}
-                                  draggable
-                                  onDragStart={(e) => handleEventDragStart(e, event, 'move', dateStr)}
-                                  onClick={(e) => { e.stopPropagation(); onEventClick(event); }}
+                                  key={event.id}
+                                  className={`absolute top-0 bottom-0 flex flex-col items-center group/event z-10`}
+                                  style={{ left: `${leftOffset}px`, width: '12px' }}
+                                  title={`${event.title} (${event.startDate} ~ ${event.endDate})`}
                                 >
-                                  {isStart && (
+                                  {/* Line Segment */}
+                                  <div
+                                    className={`w-1.5 h-full rounded-full ${colorDef.value} opacity-80 cursor-move relative transition-all hover:w-2 hover:opacity-100`}
+                                    draggable
+                                    onDragStart={(e) => handleEventDragStart(e, event, 'move', dateStr)}
+                                    onClick={(e) => { e.stopPropagation(); onEventClick(event); }}
+                                  >
+                                    {isStart && (
+                                      <div
+                                        className="absolute -top-1 left-1/2 -translate-x-1/2 w-3 h-3 bg-white border-2 border-slate-400 rounded-full cursor-n-resize hover:bg-blue-100 z-20"
+                                        draggable
+                                        onDragStart={(e) => handleEventDragStart(e, event, 'resize-start')}
+                                        onClick={(e) => e.stopPropagation()}
+                                      ></div>
+                                    )}
+                                    {isEnd && (
+                                      <div
+                                        className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-3 h-3 bg-white border-2 border-slate-400 rounded-full cursor-s-resize hover:bg-blue-100 z-20"
+                                        draggable
+                                        onDragStart={(e) => handleEventDragStart(e, event, 'resize-end')}
+                                        onClick={(e) => e.stopPropagation()}
+                                      ></div>
+                                    )}
+                                  </div>
+
+                                  {/* Label (Vertical writing mode) */}
+                                  {(isStart || (day === 1 && event.startDate < dateStr)) && (
                                     <div
-                                      className="absolute -top-1 left-1/2 -translate-x-1/2 w-3 h-3 bg-white border-2 border-slate-400 rounded-full cursor-n-resize hover:bg-blue-100 z-20"
-                                      draggable
-                                      onDragStart={(e) => handleEventDragStart(e, event, 'resize-start')}
-                                      onClick={(e) => e.stopPropagation()}
-                                    ></div>
-                                  )}
-                                  {isEnd && (
-                                    <div
-                                      className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-3 h-3 bg-white border-2 border-slate-400 rounded-full cursor-s-resize hover:bg-blue-100 z-20"
-                                      draggable
-                                      onDragStart={(e) => handleEventDragStart(e, event, 'resize-end')}
-                                      onClick={(e) => e.stopPropagation()}
-                                    ></div>
+                                      className={`absolute left-3 top-0 z-30 whitespace-nowrap text-xs font-bold text-slate-700 px-0.5 py-1.5 rounded shadow-sm border border-slate-100 pointer-events-none ${colorDef.lightBg} bg-opacity-90`}
+                                      style={{ writingMode: 'vertical-rl' }}
+                                    >
+                                      {event.title}
+                                    </div>
                                   )}
                                 </div>
-
-                                {/* Label (Vertical writing mode) */}
-                                {(isStart || (day === 1 && event.startDate < dateStr)) && (
-                                  <div
-                                    className={`absolute left-3 top-0 z-30 whitespace-nowrap text-xs font-bold text-slate-700 px-0.5 py-1.5 rounded shadow-sm border border-slate-100 pointer-events-none ${colorDef.lightBg} bg-opacity-90`}
-                                    style={{ writingMode: 'vertical-rl' }}
-                                  >
-                                    {event.title}
-                                  </div>
-                                )}
-                              </div>
-                            );
-                          }
-                          return null;
-                        })}
+                              );
+                            }
+                            return null;
+                          })}
                       </div>
                     </div>
 
