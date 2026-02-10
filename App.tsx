@@ -1,6 +1,6 @@
 
 import React, { useState, useRef, useMemo } from 'react';
-import { Task, DialogType, DialogOptions, DragGhost, ViewMode, GroupByMode } from './types';
+import { Task, Category, DialogType, DialogOptions, DragGhost, ViewMode, GroupByMode } from './types';
 import { TimelineGrid } from './components/Timeline/TimelineGrid';
 import { Dialog } from './components/UI/Dialog';
 import { TaskForm } from './components/TaskForm';
@@ -19,7 +19,8 @@ const App: React.FC = () => {
     tasks, setTasks,
     categories, setCategories,
     appName, setAppName,
-    appIcon, setAppIcon
+    appIcon, setAppIcon,
+    updateData, undo, redo
   } = useKanbanData();
 
   const {
@@ -75,6 +76,39 @@ const App: React.FC = () => {
   const [groupBy, setGroupBy] = useState<GroupByMode>('category');
   const [autoSaveEnabled, setAutoSaveEnabled] = useState(false);
   const [showAutoSaveSuccess, setShowAutoSaveSuccess] = useState(false);
+
+  // --- Keyboard Shortcuts (Undo/Redo) ---
+  React.useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Ignore if focus is on an input or textarea
+      const target = e.target as HTMLElement;
+      if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable) {
+        return;
+      }
+
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') {
+        if (e.shiftKey) {
+          // Redo: Ctrl+Shift+Z
+          e.preventDefault();
+          const newState = redo();
+          if (newState) tryAutoSave(newState);
+        } else {
+          // Undo: Ctrl+Z
+          e.preventDefault();
+          const newState = undo();
+          if (newState) tryAutoSave(newState);
+        }
+      } else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'y') {
+        // Redo: Ctrl+Y
+        e.preventDefault();
+        const newState = redo();
+        if (newState) tryAutoSave(newState);
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [undo, redo, tasks, categories, autoSaveEnabled]);
 
   // Drag & Drop (Task)
   const [dragGhost, setDragGhost] = useState<DragGhost | null>(null);
@@ -257,6 +291,12 @@ const App: React.FC = () => {
           try {
             if (data.appName) setAppName(data.appName);
             if (data.appIcon) setAppIcon(data.appIcon);
+            // Use legacy setters here for bulk import without history?
+            // Actually no, allow undo of import might be dangerous if file handle changes?
+            // Let's stick to legacy Setters for initial import to avoid weird history state,
+            // OR use updateData to allow Undo.
+            // Requirement says Undo history limit 50. Import is a major change.
+            // Let's keep it as is (using setters directly) for now as it resets the app state basically.
             setCategories(data.categories);
             setTasks(data.tasks);
 
@@ -445,7 +485,7 @@ const App: React.FC = () => {
     if (partialTask.id) {
       // Update
       const newTasks = tasks.map(t => t.id === partialTask.id ? { ...t, ...partialTask } as Task : t);
-      setTasks(newTasks);
+      updateData({ tasks: newTasks });
       tryAutoSave({ tasks: newTasks });
     } else {
       // Create
@@ -454,7 +494,7 @@ const App: React.FC = () => {
         id: crypto.randomUUID(),
       };
       const newTasks = [...tasks, newTask];
-      setTasks(newTasks);
+      updateData({ tasks: newTasks });
       tryAutoSave({ tasks: newTasks });
     }
     closeDialog();
@@ -466,7 +506,7 @@ const App: React.FC = () => {
       message: '本当にこのタスクを削除しますか？',
       onConfirm: () => {
         const newTasks = tasks.filter(t => t.id !== taskId);
-        setTasks(newTasks);
+        updateData({ tasks: newTasks });
         tryAutoSave({ tasks: newTasks });
         closeDialog();
       }
@@ -486,7 +526,7 @@ const App: React.FC = () => {
       }
       return { ...t, ...updates };
     });
-    setTasks(newTasks);
+    updateData({ tasks: newTasks });
     tryAutoSave({ tasks: newTasks });
   };
 
@@ -498,7 +538,7 @@ const App: React.FC = () => {
       onConfirm: (name) => {
         if (name) {
           const newCategories = [...categories, { id: crypto.randomUUID(), name }];
-          setCategories(newCategories);
+          updateData({ categories: newCategories });
           tryAutoSave({ categories: newCategories });
           closeDialog();
         }
@@ -508,7 +548,7 @@ const App: React.FC = () => {
 
   const updateCategory = (id: string, name: string) => {
     const newCategories = categories.map(c => c.id === id ? { ...c, name } : c);
-    setCategories(newCategories);
+    updateData({ categories: newCategories });
     tryAutoSave({ categories: newCategories });
   };
 
@@ -520,8 +560,7 @@ const App: React.FC = () => {
         const newCategories = categories.filter(c => c.id !== id);
         const newTasks = tasks.filter(t => t.categoryId !== id);
 
-        setCategories(newCategories);
-        setTasks(newTasks);
+        updateData({ categories: newCategories, tasks: newTasks });
 
         tryAutoSave({ categories: newCategories, tasks: newTasks });
         closeDialog();

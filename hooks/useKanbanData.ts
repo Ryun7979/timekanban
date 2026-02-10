@@ -48,6 +48,62 @@ export const useKanbanData = () => {
         localStorage.setItem('kanban-app-icon', appIcon);
     }, [appIcon]);
 
+    // --- History Management ---
+
+    interface HistoryState {
+        tasks: Task[];
+        categories: Category[];
+    }
+
+    const [past, setPast] = useState<HistoryState[]>([]);
+    const [future, setFuture] = useState<HistoryState[]>([]);
+
+    const updateData = (updates: { tasks?: Task[], categories?: Category[] }) => {
+        // Save current state to past
+        setPast(prev => {
+            const newPast = [...prev, { tasks, categories }];
+            if (newPast.length > 50) newPast.shift(); // Limit history to 50
+            return newPast;
+        });
+
+        // Update state
+        if (updates.tasks) setTasks(updates.tasks);
+        if (updates.categories) setCategories(updates.categories);
+
+        // Clear future
+        setFuture([]);
+    };
+
+    const undo = () => {
+        if (past.length === 0) return null;
+
+        const previous = past[past.length - 1];
+        const newPast = past.slice(0, past.length - 1);
+
+        setPast(newPast);
+        setFuture(prev => [{ tasks, categories }, ...prev]);
+
+        setTasks(previous.tasks);
+        setCategories(previous.categories);
+
+        return previous;
+    };
+
+    const redo = () => {
+        if (future.length === 0) return null;
+
+        const next = future[0];
+        const newFuture = future.slice(1);
+
+        setFuture(newFuture);
+        setPast(prev => [...prev, { tasks, categories }]);
+
+        setTasks(next.tasks);
+        setCategories(next.categories);
+
+        return next;
+    };
+
     return {
         tasks,
         setTasks,
@@ -56,6 +112,11 @@ export const useKanbanData = () => {
         appName,
         setAppName,
         appIcon,
-        setAppIcon
+        setAppIcon,
+        updateData,
+        undo,
+        redo,
+        canUndo: past.length > 0,
+        canRedo: future.length > 0
     };
 };
