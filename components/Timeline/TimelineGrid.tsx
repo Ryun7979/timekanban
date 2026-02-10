@@ -191,9 +191,9 @@ export const TimelineGrid: React.FC<TimelineGridProps> = ({
       <div ref={containerRef} className="overflow-auto flex-1 custom-scrollbar relative">
         <div className="min-w-full w-max">
           {/* Header Row (Sticky) */}
-          <div className="flex border-b border-slate-200 bg-slate-50 sticky top-0 z-[600] shadow-sm min-w-max">
+          <div className="flex border-b border-slate-200 bg-slate-50 sticky top-0 z-[800] shadow-sm min-w-max">
             {/* Sticky Month Column */}
-            <div className="w-16 md:w-24 flex-shrink-0 p-2 border-r border-slate-200 flex flex-col items-center justify-center text-slate-700 bg-slate-50 sticky left-0 z-[700] shadow-[1px_0_0_0_rgba(226,232,240,1)]">
+            <div className="w-16 md:w-24 flex-shrink-0 p-2 border-r border-slate-200 flex flex-col items-center justify-center text-slate-700 bg-slate-50 sticky left-0 z-[900] shadow-[1px_0_0_0_rgba(226,232,240,1)]">
               <div className="flex items-baseline">
                 <span className="text-xl md:text-2xl font-bold leading-none">{currentDate.getMonth() + 1}</span>
                 <span className="text-xs font-medium ml-0.5">月</span>
@@ -203,7 +203,7 @@ export const TimelineGrid: React.FC<TimelineGridProps> = ({
 
             {/* Sticky Event Column Header */}
             <div
-              className="flex-shrink-0 p-2 border-r border-slate-200 flex items-center justify-center text-slate-700 bg-slate-50 font-semibold text-sm transition-all duration-300 sticky left-16 md:left-24 z-[700] shadow-[1px_0_0_0_rgba(226,232,240,1)]"
+              className="flex-shrink-0 p-2 border-r border-slate-200 flex items-center justify-center text-slate-700 bg-slate-50 font-semibold text-sm transition-all duration-300 sticky left-16 md:left-24 z-[900] shadow-[1px_0_0_0_rgba(226,232,240,1)]"
               style={{ width: Math.max(96, (maxLanes * 36) + 16) + 'px' }} // Dynamic width based on lanes (36px per lane)
             >
               イベント
@@ -299,7 +299,7 @@ export const TimelineGrid: React.FC<TimelineGridProps> = ({
             <React.Fragment key={`${monthData.year}-${monthData.month}`}>
               {/* Month Separator */}
               {viewMode !== '1month' && (
-                <div className="sticky top-[57px] z-[500] bg-slate-100/90 backdrop-blur-sm border-b border-slate-200 p-2 text-sm font-bold text-slate-600 pl-4 shadow-sm min-w-max">
+                <div className="sticky top-[57px] z-[750] bg-slate-100/90 backdrop-blur-sm border-b border-slate-200 p-2 text-sm font-bold text-slate-600 pl-4 shadow-sm min-w-max">
                   {monthData.year}年 {monthData.month + 1}月
                 </div>
               )}
@@ -318,7 +318,7 @@ export const TimelineGrid: React.FC<TimelineGridProps> = ({
                   >
 
                     {/* Date Column (Sticky) */}
-                    <div className={`w-16 md:w-24 flex-shrink-0 p-2 border-r border-slate-200 flex flex-col items-center justify-center text-slate-500 sticky left-0 z-[500] shadow-[1px_0_0_0_rgba(226,232,240,1)] ${isToday ? 'bg-blue-50 text-blue-600' : (isWeekend ? 'bg-slate-50' : 'bg-white')}`}>
+                    <div className={`w-16 md:w-24 flex-shrink-0 p-2 border-r border-slate-200 flex flex-col items-center justify-center text-slate-500 sticky left-0 z-[700] shadow-[1px_0_0_0_rgba(226,232,240,1)] ${isToday ? 'bg-blue-50 text-blue-600' : (isWeekend ? 'bg-slate-50' : 'bg-white')}`}>
                       <span className="text-xl font-bold leading-none">{day}</span>
                       <span className="text-[10px] uppercase font-medium mt-1">
                         {currentDayDate.toLocaleDateString('ja-JP', { weekday: 'short' })}
@@ -332,15 +332,15 @@ export const TimelineGrid: React.FC<TimelineGridProps> = ({
                       style={{
                         width: Math.max(96, (maxLanes * 36) + 16) + 'px',
                         /* Dynamic Z-Index:
-                           - If has event start (High Priority): Future > Past (2000 + idx)
-                           - If no event start (Low Priority / Empty): Past > Future (1000 - idx)
+                           - If has event start (High Priority): Future > Past (400 + idx)
+                           - If no event start (Low Priority / Empty): Past > Future (350 - idx)
                              -> This allows past event text to overflow into empty future cells,
                                 but be covered by future cells that have events.
                         */
                         zIndex: (() => {
                           const hasEventStart = events.some(e => e.startDate === dateStr);
                           const globalDayIndex = monthIdx * 40 + dayIdx;
-                          return hasEventStart ? (2000 + globalDayIndex) : (1000 - globalDayIndex);
+                          return hasEventStart ? (400 + globalDayIndex) : (350 - globalDayIndex);
                         })()
                       }}
                       onDragOver={(e) => handleDragOver(e, dateStr, 'events-column')}
