@@ -627,13 +627,9 @@ const App: React.FC = () => {
       currentAppName: appName,
       currentAppIcon: appIcon,
       currentFileName: currentFileHandle?.name, // Pass the file name here
-      isAutoSaveEnabled: autoSaveEnabled,
-      isAutoUpdateEnabled: autoUpdateEnabled,
-      onSettingsSave: (name, icon, autoSave, autoUpdate) => {
+      onSettingsSave: (name, icon) => {
         setAppName(name);
         setAppIcon(icon);
-        setAutoSaveEnabled(autoSave);
-        setAutoUpdateEnabled(autoUpdate);
         closeDialog();
       },
       onResetData: () => {
@@ -693,9 +689,9 @@ const App: React.FC = () => {
             currentName={dialogProps.currentAppName || DEFAULT_APP_NAME}
             currentIcon={dialogProps.currentAppIcon || DEFAULT_APP_ICON}
             currentFileName={dialogProps.currentFileName} // Pass prop
-            isAutoSaveEnabled={dialogProps.isAutoSaveEnabled || false}
-            isAutoUpdateEnabled={dialogProps.isAutoUpdateEnabled || false}
-            onSave={(name, icon, autoSave, autoUpdate) => dialogProps.onSettingsSave?.(name, icon, autoSave, autoUpdate)}
+            onSave={(name, icon) => dialogProps.onSettingsSave?.(name, icon)}
+
+
             onReset={dialogProps.onResetData}
             onCancel={closeDialog}
           />
@@ -1004,6 +1000,34 @@ const App: React.FC = () => {
               tasks={tasks}
               onSelect={(dateStr) => setCurrentDate(new Date(dateStr))}
             />
+          </div>
+
+          {/* Settings in Sidebar */}
+          <div className="p-4 border-t border-slate-100 bg-slate-50 space-y-3">
+            <div className="flex items-center space-x-2">
+              <input
+                type="checkbox"
+                id="sidebarAutoSave"
+                checked={autoSaveEnabled}
+                onChange={(e) => setAutoSaveEnabled(e.target.checked)}
+                className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+              />
+              <label htmlFor="sidebarAutoSave" className="text-sm font-medium text-blue-700 cursor-pointer select-none">
+                自動保存
+              </label>
+            </div>
+            <div className="flex items-center space-x-2">
+              <input
+                type="checkbox"
+                id="sidebarAutoUpdate"
+                checked={autoUpdateEnabled}
+                onChange={(e) => setAutoUpdateEnabled(e.target.checked)}
+                className="h-4 w-4 text-green-600 focus:ring-green-500 border-gray-300 rounded"
+              />
+              <label htmlFor="sidebarAutoUpdate" className="text-sm font-medium text-green-700 cursor-pointer select-none">
+                自動リロード
+              </label>
+            </div>
           </div>
         </aside>
       </div>
