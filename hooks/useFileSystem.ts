@@ -22,12 +22,24 @@ export const useFileSystem = () => {
         }
     };
 
-    const saveFile = async (data: ExportData) => {
+    const saveFile = async (data: ExportData, options?: { checkCollision?: boolean, lastModified?: number }) => {
         if (!currentFileHandle) {
             throw new Error("保存先のファイルが指定されていません。");
         }
 
         try {
+            // Conflict Detection
+            if (options?.checkCollision && options.lastModified) {
+                const file = await currentFileHandle.getFile();
+                // Allow a small margin of error (e.g., 100ms) or exact match?
+                // Usually exact match is best for locking.
+                if (file.lastModified > options.lastModified) {
+                    const error: any = new Error("ファイルが外部で変更されています。上書きしますか？");
+                    error.name = "FileCollisionError";
+                    throw error;
+                }
+            }
+
             const jsonString = JSON.stringify(data, null, 2);
             // Create a writable stream to the file
             const writable = await currentFileHandle.createWritable();

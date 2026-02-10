@@ -78,6 +78,7 @@ const App: React.FC = () => {
   const [autoUpdateEnabled, setAutoUpdateEnabled] = useState(false);
   const lastModifiedRef = useRef<number>(0);
   const [showAutoSaveSuccess, setShowAutoSaveSuccess] = useState(false);
+  const [showAutoSaveError, setShowAutoSaveError] = useState(false);
 
   // --- Keyboard Shortcuts (Undo/Redo) ---
   React.useEffect(() => {
@@ -207,7 +208,7 @@ const App: React.FC = () => {
 
     try {
       const data = getExportData(overrides);
-      await saveFile(data);
+      await saveFile(data, { checkCollision: true, lastModified: lastModifiedRef.current });
       console.log("Auto-saved successfully.");
 
       // Update lastModifiedRef to prevent auto-reload triggering
@@ -223,9 +224,14 @@ const App: React.FC = () => {
       // Show notification
       setShowAutoSaveSuccess(true);
       setTimeout(() => setShowAutoSaveSuccess(false), 2000);
-    } catch (e) {
+    } catch (e: any) {
       console.error("Auto-save failed:", e);
-      // Optional: silent fail or toast? For now, silent log to avoid interrupting workflow
+      if (e.name === 'FileCollisionError') {
+        // Disable auto-save to prevent looping
+        setAutoSaveEnabled(false);
+        setShowAutoSaveError(true);
+        setTimeout(() => setShowAutoSaveError(false), 5000);
+      }
     }
   };
 
@@ -265,7 +271,7 @@ const App: React.FC = () => {
 
     try {
       const data = getExportData();
-      await saveFile(data);
+      await saveFile(data, { checkCollision: true, lastModified: lastModifiedRef.current });
 
       // Update lastModifiedRef
       if (currentFileHandle) {
@@ -279,9 +285,38 @@ const App: React.FC = () => {
 
       // Optional: show success toast here if desired.
       console.log("File saved successfully.");
+      setShowAutoSaveSuccess(true);
+      setTimeout(() => setShowAutoSaveSuccess(false), 2000);
 
     } catch (error: any) {
       console.error("Quick Save Error:", error);
+
+      if (error.name === 'FileCollisionError') {
+        openDialog('confirm', {
+          title: '競合が発生しました',
+          message: 'ファイルが外部で変更されています。\n強制的に上書きしますか？',
+          onConfirm: async () => {
+            try {
+              const data = getExportData();
+              await saveFile(data, { checkCollision: false });
+              // Update lastModifiedRef
+              if (currentFileHandle) {
+                const file = await currentFileHandle.getFile();
+                lastModifiedRef.current = file.lastModified;
+              }
+              closeDialog();
+              setShowAutoSaveSuccess(true);
+              setTimeout(() => setShowAutoSaveSuccess(false), 2000);
+            } catch (err: any) {
+              openDialog('alert', {
+                title: '保存エラー',
+                message: `強制保存に失敗しました。\n${err.message}`
+              });
+            }
+          }
+        });
+        return;
+      }
 
       // Handle specific errors
       let message = `ファイルの保存中にエラーが発生しました。\n${error.message || '不明なエラー'}`;
@@ -800,6 +835,29 @@ const App: React.FC = () => {
                       <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
                     </svg>
                     <span>保存完了</span>
+                  </div>
+                </>
+              )}
+
+              {/* Auto Save Error Notification */}
+              {showAutoSaveError && (
+                <>
+                  <style>{`
+                    @keyframes fadeInOut {
+                      0% { opacity: 0; transform: translateY(2px) translateX(0px); }
+                      15% { opacity: 1; transform: translateY(0) translateX(0); }
+                      85% { opacity: 1; transform: translateY(0) translateX(0); }
+                      100% { opacity: 0; transform: translateY(-2px) translateX(0); }
+                    }
+                  `}</style>
+                  <div
+                    className="absolute right-full mr-2 px-1.5 py-0.5 bg-red-100 text-red-700 text-[10px] font-medium rounded-full flex items-center gap-1 pointer-events-none whitespace-nowrap shadow-sm border border-red-200"
+                    style={{ animation: 'fadeInOut 5s ease-in-out forwards' }}
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-2.5 w-2.5" viewBox="0 0 20 20" fill="currentColor">
+                      <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                    </svg>
+                    <span>自動保存停止（競合）</span>
                   </div>
                 </>
               )}
