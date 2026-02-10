@@ -79,6 +79,7 @@ const App: React.FC = () => {
   const [groupBy, setGroupBy] = useState<GroupByMode>('category');
   const [autoSaveEnabled, setAutoSaveEnabled] = useState(false);
   const [autoUpdateEnabled, setAutoUpdateEnabled] = useState(false);
+  const [isCompactMode, setIsCompactMode] = useState(false);
   const lastModifiedRef = useRef<number>(0);
   const [showAutoSaveSuccess, setShowAutoSaveSuccess] = useState(false);
   const [showAutoSaveError, setShowAutoSaveError] = useState(false);
@@ -1070,25 +1071,50 @@ const App: React.FC = () => {
               </button>
             </div>
 
+
+
             {/* View Mode Switching */}
-            <div className="flex bg-slate-100 p-1 rounded-lg">
+            <div className="flex bg-slate-100 p-1 rounded-lg items-center">
+              <div className="flex mr-2">
+                <button
+                  onClick={() => !isCompactMode && setViewMode('1month')}
+                  className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-all ${viewMode === '1month' ? 'bg-white shadow-sm text-blue-600' : 'text-slate-500 hover:text-slate-700'} ${isCompactMode ? 'opacity-50 cursor-not-allowed' : ''}`}
+                >
+                  1ヶ月
+                </button>
+                <button
+                  onClick={() => !isCompactMode && setViewMode('3months')}
+                  className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-all ${viewMode === '3months' ? 'bg-white shadow-sm text-blue-600' : 'text-slate-500 hover:text-slate-700'} ${isCompactMode ? 'opacity-50 cursor-not-allowed' : ''}`}
+                >
+                  3ヶ月
+                </button>
+                <button
+                  onClick={() => setViewMode('6months')}
+                  className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-all ${viewMode === '6months' ? 'bg-white shadow-sm text-blue-600' : 'text-slate-500 hover:text-slate-700'}`}
+                >
+                  6ヶ月
+                </button>
+              </div>
+
+              {/* Compact Mode Toggle */}
+              <div className="h-4 w-px bg-slate-200 mx-1"></div>
               <button
-                onClick={() => setViewMode('1month')}
-                className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-all ${viewMode === '1month' ? 'bg-white shadow-sm text-blue-600' : 'text-slate-500 hover:text-slate-700'}`}
+                onClick={() => {
+                  const newMode = !isCompactMode;
+                  setIsCompactMode(newMode);
+                  if (newMode) setViewMode('6months');
+                }}
+                className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-all flex items-center gap-1 ${isCompactMode ? 'bg-blue-100 text-blue-700 ring-1 ring-blue-200' : 'text-slate-500 hover:text-slate-700 hover:bg-slate-200/50'}`}
+                title="圧縮表示（俯瞰モード）"
               >
-                1ヶ月
-              </button>
-              <button
-                onClick={() => setViewMode('3months')}
-                className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-all ${viewMode === '3months' ? 'bg-white shadow-sm text-blue-600' : 'text-slate-500 hover:text-slate-700'}`}
-              >
-                3ヶ月
-              </button>
-              <button
-                onClick={() => setViewMode('6months')}
-                className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-all ${viewMode === '6months' ? 'bg-white shadow-sm text-blue-600' : 'text-slate-500 hover:text-slate-700'}`}
-              >
-                6ヶ月
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  {isCompactMode ? (
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" />
+                  ) : (
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 10h16M4 14h16M4 18h16" />
+                  )}
+                </svg>
+                <span>俯瞰</span>
               </button>
             </div>
 
@@ -1120,7 +1146,7 @@ const App: React.FC = () => {
             </Button>
           </div>
         </div>
-      </header>
+      </header >
 
       {/* Main Content: Timeline & Sidebar */}
       < div className="flex flex-1 overflow-hidden" >
@@ -1141,7 +1167,9 @@ const App: React.FC = () => {
             onCategoryUpdate={updateCategory}
             onCategoryDelete={deleteCategory}
             setDragGhost={setDragGhost}
+
             dragGhost={dragGhost}
+            isCompactMode={isCompactMode}
           />
         </main>
 

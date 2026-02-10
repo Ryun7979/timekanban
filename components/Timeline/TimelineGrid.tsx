@@ -23,6 +23,7 @@ interface TimelineGridProps {
   dragGhost: DragGhost | null;
   setDragGhost: (ghost: DragGhost | null) => void;
   viewMode: ViewMode;
+  isCompactMode?: boolean;
 }
 
 export const TimelineGrid: React.FC<TimelineGridProps> = ({
@@ -41,8 +42,11 @@ export const TimelineGrid: React.FC<TimelineGridProps> = ({
   onCategoryAdd,
   dragGhost,
   setDragGhost,
-  viewMode
+  viewMode,
+  isCompactMode = false
 }) => {
+  // Compression Settings
+  const ROW_HEIGHT = 20; // px
   const monthsToShow = viewMode === '1month' ? 1 : viewMode === '3months' ? 3 : 6;
   const startYear = currentDate.getFullYear();
   const startMonth = currentDate.getMonth();
@@ -72,6 +76,7 @@ export const TimelineGrid: React.FC<TimelineGridProps> = ({
 
   const handleDragOver = (e: React.DragEvent, dateStr: string, columnId: string) => {
     e.preventDefault();
+    if (isCompactMode) return; // Disable drag in compact mode
     if (dragGhost?.columnId !== columnId || dragGhost?.date !== dateStr) {
       setDragGhost({ columnId, date: dateStr });
     }
@@ -133,6 +138,10 @@ export const TimelineGrid: React.FC<TimelineGridProps> = ({
   };
 
   const handleEventDragStart = (e: React.DragEvent, event: CalendarEvent, type: 'move' | 'resize-start' | 'resize-end', dateStr?: string) => {
+    if (isCompactMode) {
+      e.preventDefault();
+      return;
+    }
     e.dataTransfer.setData("eventId", event.id);
     e.dataTransfer.setData("dragType", type);
     if (dateStr) e.dataTransfer.setData("dragOriginDate", dateStr);
@@ -225,7 +234,7 @@ export const TimelineGrid: React.FC<TimelineGridProps> = ({
               className="flex-shrink-0 p-2 border-r border-slate-200 flex items-center justify-center text-slate-700 bg-slate-50 font-semibold text-sm transition-all duration-300 sticky left-16 md:left-24 z-[5000] shadow-[1px_0_0_0_rgba(226,232,240,1)]"
               style={{ width: Math.max(96, (maxLanes * 36) + 16) + 'px' }} // Dynamic width based on lanes (36px per lane)
             >
-              イベント
+              {!isCompactMode && "イベント"}
             </div>
 
             {columns.map((col) => {
@@ -250,18 +259,18 @@ export const TimelineGrid: React.FC<TimelineGridProps> = ({
               }).length;
 
               return (
-                <div key={col.id} className="flex-1 min-w-[200px] p-2 border-r border-slate-200 last:border-r-0 relative group flex items-center justify-center gap-2 bg-slate-50">
+                <div key={col.id} className={`flex-1 ${isCompactMode ? 'min-w-[40px] p-0' : 'min-w-[200px] p-2'} border-r border-slate-200 last:border-r-0 relative group flex items-center justify-center gap-2 bg-slate-50`}>
                   {groupBy === 'category' ? (
                     <>
                       <input
                         type="text"
                         value={col.name}
                         onChange={(e) => onCategoryUpdate(col.id, e.target.value)}
-                        className="flex-1 min-w-0 bg-transparent font-semibold text-slate-700 text-center focus:bg-white focus:ring-2 focus:ring-blue-500 rounded px-2 py-1 outline-none text-sm"
+                        className={`flex-1 min-w-0 bg-transparent font-semibold text-slate-700 text-center focus:bg-white focus:ring-2 focus:ring-blue-500 rounded px-2 py-1 outline-none ${isCompactMode ? 'text-xs' : 'text-sm'}`}
                       />
                       <button
                         onClick={() => onCategoryDelete(col.id)}
-                        className="absolute top-1 right-1 text-slate-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity p-1"
+                        className="absolute top-1 right-1"
                         title="カテゴリを削除"
                       >
                         <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -335,21 +344,24 @@ export const TimelineGrid: React.FC<TimelineGridProps> = ({
                   <div
                     key={dateStr}
                     id={`date-${dateStr}`}
-                    className={`flex border-b border-slate-100 min-h-[100px] ${isWeekend ? 'bg-slate-50/50' : 'bg-white'} min-w-max`}
+                    className={`flex border-b border-slate-100 ${isCompactMode ? '' : 'min-h-[100px]'} ${isWeekend ? 'bg-slate-50/50' : 'bg-white'} min-w-max`}
+                    style={isCompactMode ? { minHeight: `${ROW_HEIGHT}px` } : undefined}
                   >
 
                     {/* Date Column (Sticky) */}
-                    <div className={`w-16 md:w-24 flex-shrink-0 p-2 border-r border-slate-200 flex flex-col items-center justify-center text-slate-500 sticky left-0 z-[700] shadow-[1px_0_0_0_rgba(226,232,240,1)] ${isToday ? 'bg-blue-50 text-blue-600' : (isWeekend ? 'bg-slate-50' : 'bg-white')}`}>
-                      <span className="text-xl font-bold leading-none">{day}</span>
-                      <span className="text-[10px] uppercase font-medium mt-1">
-                        {currentDayDate.toLocaleDateString('ja-JP', { weekday: 'short' })}
-                      </span>
-                      {isToday && <span className="text-[9px] bg-blue-100 text-blue-600 px-1.5 rounded-full mt-1">今日</span>}
+                    <div className={`w-16 md:w-24 flex-shrink-0 ${isCompactMode ? 'p-0 justify-center' : 'p-2 justify-center'} border-r border-slate-200 flex flex-col items-center text-slate-500 sticky left-0 z-[700] shadow-[1px_0_0_0_rgba(226,232,240,1)] ${isToday ? 'bg-blue-50 text-blue-600' : (isWeekend ? 'bg-slate-50' : 'bg-white')}`}>
+                      <span className={`${isCompactMode ? 'text-[10px] font-medium' : 'text-xl font-bold'} leading-none`}>{day}</span>
+                      {!isCompactMode && (
+                        <span className="text-[10px] uppercase font-medium mt-1">
+                          {currentDayDate.toLocaleDateString('ja-JP', { weekday: 'short' })}
+                        </span>
+                      )}
+                      {isToday && <span className={`text-[9px] bg-blue-100 text-blue-600 px-1.5 rounded-full ${isCompactMode ? 'ml-1' : 'mt-1'}`}>{isCompactMode ? '' : '今日'}</span>}
                     </div>
 
                     {/* Event Column Cells (Sticky) */}
                     <div
-                      className={`flex-shrink-0 border-r border-slate-200 relative group transition-colors sticky left-16 md:left-24 shadow-[1px_0_0_0_rgba(226,232,240,1)] ${isWeekend ? 'bg-slate-50/50' : 'bg-white'} hover:bg-slate-50/80`}
+                      className={`flex-shrink-0 border-r border-slate-200 relative group transition-colors sticky left-16 md:left-24 shadow-[1px_0_0_0_rgba(226,232,240,1)] ${isWeekend ? 'bg-slate-50/50' : 'bg-white'} hover:bg-slate-50/80 hover:!z-[4500]`}
                       style={{
                         width: Math.max(96, (maxLanes * 36) + 16) + 'px',
                         /* Dynamic Z-Index:
@@ -360,7 +372,7 @@ export const TimelineGrid: React.FC<TimelineGridProps> = ({
                            - Base increased to 3000/4000 to prevent negative values or conflict
                         */
                         zIndex: (() => {
-                          const hasEventStart = events.some(e => e.startDate === dateStr);
+                          const hasEventStart = events.some(e => e.startDate && e.startDate === dateStr);
                           const globalDayIndex = monthIdx * 40 + dayIdx;
                           return hasEventStart ? (4000 + globalDayIndex) : (3000 - globalDayIndex);
                         })()
@@ -394,16 +406,15 @@ export const TimelineGrid: React.FC<TimelineGridProps> = ({
                                   key={event.id}
                                   className={`absolute top-0 bottom-0 flex flex-col items-center group/event z-10`}
                                   style={{ left: `${leftOffset}px`, width: '12px' }}
-                                  title={`${event.title} (${event.startDate} ~ ${event.endDate})`}
                                 >
                                   {/* Line Segment */}
                                   <div
-                                    className={`w-1.5 h-full rounded-full ${colorDef.value} opacity-80 cursor-move relative transition-all hover:w-2 hover:opacity-100`}
-                                    draggable
+                                    className={`w-1.5 h-full rounded-full ${colorDef.value} opacity-80 ${isCompactMode ? '' : 'cursor-move hover:w-2 hover:opacity-100'} relative transition-all`}
+                                    draggable={!isCompactMode}
                                     onDragStart={(e) => handleEventDragStart(e, event, 'move', dateStr)}
-                                    onClick={(e) => { e.stopPropagation(); onEventClick(event); }}
+                                    onClick={(e) => { e.stopPropagation(); if (!isCompactMode) onEventClick(event); }}
                                   >
-                                    {isStart && (
+                                    {!isCompactMode && isStart && (
                                       <div
                                         className="absolute -top-1 left-1/2 -translate-x-1/2 w-3 h-3 bg-white border-2 border-slate-400 rounded-full cursor-n-resize hover:bg-blue-100 z-20"
                                         draggable
@@ -411,7 +422,7 @@ export const TimelineGrid: React.FC<TimelineGridProps> = ({
                                         onClick={(e) => e.stopPropagation()}
                                       ></div>
                                     )}
-                                    {isEnd && (
+                                    {!isCompactMode && isEnd && (
                                       <div
                                         className="absolute -bottom-1 left-1/2 -translate-x-1/2 w-3 h-3 bg-white border-2 border-slate-400 rounded-full cursor-s-resize hover:bg-blue-100 z-20"
                                         draggable
@@ -422,7 +433,7 @@ export const TimelineGrid: React.FC<TimelineGridProps> = ({
                                   </div>
 
                                   {/* Label (Vertical writing mode) */}
-                                  {(isStart || (day === 1 && event.startDate < dateStr)) && (
+                                  {!isCompactMode && (isStart || (day === 1 && event.startDate < dateStr)) && (
                                     <div
                                       className={`absolute left-3 top-0 z-30 whitespace-nowrap text-xs font-bold text-slate-700 px-0.5 py-1.5 rounded shadow-sm border border-slate-100 pointer-events-none ${colorDef.lightBg} bg-opacity-90`}
                                       style={{ writingMode: 'vertical-rl' }}
@@ -430,6 +441,13 @@ export const TimelineGrid: React.FC<TimelineGridProps> = ({
                                       {event.title}
                                     </div>
                                   )}
+
+                                  {/* Custom Tooltip (Zero lag) */}
+                                  <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 hidden group-hover/event:block z-[9999] whitespace-pre bg-slate-800 text-white text-base px-3 py-2 rounded shadow-lg pointer-events-none w-max max-w-[300px] leading-snug">
+                                    {`${event.title}\n(${event.startDate} ~ ${event.endDate})`}
+                                    {/* Triangle Pointer */}
+                                    <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-slate-800"></div>
+                                  </div>
                                 </div>
                               );
                             }
@@ -457,19 +475,26 @@ export const TimelineGrid: React.FC<TimelineGridProps> = ({
                         return (
                           <div
                             key={`${dateStr}-${col.id}`}
-                            className={`flex-1 min-w-[200px] border-r border-slate-100 last:border-r-0 p-2 relative group transition-colors ${isGhostHere ? 'bg-blue-50/50' : 'hover:bg-slate-50'}`}
+                            className={`flex-1 ${isCompactMode ? 'min-w-[40px] p-0' : 'min-w-[200px] p-2'} border-r border-slate-100 last:border-r-0 relative group transition-colors ${isGhostHere ? 'bg-blue-50/50' : 'hover:bg-slate-50'}`}
                             onDragOver={(e) => handleDragOver(e, dateStr, col.id)}
                             onDrop={(e) => handleDrop(e, dateStr, col.id)}
                             onClick={() => onCellClick(dateStr, col.id)}
                           >
-                            <div className="flex flex-col gap-2 h-full">
+                            <div className={`flex flex-col h-full w-full ${isCompactMode ? 'gap-0.5 px-0.5' : 'gap-2'}`}>
                               {cellTasks.map(task => (
                                 <TaskCard
                                   key={task.id}
                                   task={task}
-                                  onClick={onTaskClick}
-                                  onDragStart={(e) => e.dataTransfer.setData("taskId", task.id)}
+                                  onClick={(t) => !isCompactMode && onTaskClick(t)}
+                                  onDragStart={(e) => {
+                                    if (isCompactMode) {
+                                      e.preventDefault();
+                                      return;
+                                    }
+                                    e.dataTransfer.setData("taskId", task.id)
+                                  }}
                                   onDragEnd={() => setDragGhost(null)}
+                                  isCompact={isCompactMode}
                                 />
                               ))}
                               {isGhostHere && (
@@ -478,7 +503,7 @@ export const TimelineGrid: React.FC<TimelineGridProps> = ({
                                 </div>
                               )}
                               {/* Empty space click target helper */}
-                              <div className="flex-grow min-h-[2rem]"></div>
+                              <div className={`flex-grow ${isCompactMode ? 'min-h-[10px]' : 'min-h-[2rem]'}`}></div>
                             </div>
                           </div>
                         );

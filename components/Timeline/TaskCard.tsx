@@ -9,9 +9,10 @@ interface TaskCardProps {
   onClick: (task: Task) => void;
   onDragStart: (e: React.DragEvent, task: Task) => void;
   onDragEnd?: () => void;
+  isCompact?: boolean;
 }
 
-export const TaskCard: React.FC<TaskCardProps> = ({ task, onClick, onDragStart, onDragEnd }) => {
+export const TaskCard: React.FC<TaskCardProps> = ({ task, onClick, onDragStart, onDragEnd, isCompact = false }) => {
   const completedSubtasks = (task.subtasks || []).filter(s => s.completed).length;
   const totalSubtasks = task.subtasks?.length || 0;
 
@@ -28,7 +29,31 @@ export const TaskCard: React.FC<TaskCardProps> = ({ task, onClick, onDragStart, 
 
   // カラー設定（colors.ts から取得）
   // 既存データには 'bg-blue-500' などのクラス名が入っているため、それをキーに色定義を取得
+  // 既存データには 'bg-blue-500' などのクラス名が入っているため、それをキーに色定義を取得
   const colorDef = getColorDef(task.color);
+
+  if (isCompact) {
+    const displayName = getTaskDisplayName(task);
+    const subtaskStatus = (task.subtasks?.length || 0) > 0
+      ? `(${task.subtasks?.filter(s => s.completed).length}/${task.subtasks?.length})`
+      : '';
+    const tooltip = `${task.title} ${subtaskStatus}\n日付: ${task.date}\n担当: ${displayName || '未設定'}`;
+
+    return (
+      <div className="relative group/task w-full flex-shrink-0" style={{ marginBottom: '0.33px' }}>
+        <div
+          className={`${colorDef.value} rounded-sm hover:opacity-100 transition-opacity w-full`}
+          style={{ height: '6px' }}
+        ></div>
+        {/* Custom Tooltip (Zero lag) */}
+        <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 hidden group-hover/task:block z-[9999] whitespace-pre bg-slate-800 text-white text-base px-3 py-2 rounded shadow-lg pointer-events-none w-max max-w-[300px] leading-snug">
+          {tooltip}
+          {/* Triangle Pointer */}
+          <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-slate-800"></div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div
