@@ -130,7 +130,7 @@ const App: React.FC = () => {
       }
     };
 
-    const interval = setInterval(checkFile, 2000);
+    const interval = setInterval(checkFile, 1000);
     return () => clearInterval(interval);
   }, [autoUpdateEnabled, currentFileHandle, readFile]);
 
