@@ -73,6 +73,8 @@ const App: React.FC = () => {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [viewMode, setViewMode] = useState<ViewMode>('1month');
   const [groupBy, setGroupBy] = useState<GroupByMode>('category');
+  const [autoSaveEnabled, setAutoSaveEnabled] = useState(false);
+  const [showAutoSaveSuccess, setShowAutoSaveSuccess] = useState(false);
 
   // Drag & Drop (Task)
   const [dragGhost, setDragGhost] = useState<DragGhost | null>(null);
@@ -129,7 +131,7 @@ const App: React.FC = () => {
 
   // --- Import / Export Handlers ---
 
-  const getExportData = () => {
+  const getExportData = (overrides?: { tasks?: Task[], categories?: Category[] }) => {
     return {
       meta: {
         version: '1.0',
@@ -137,9 +139,26 @@ const App: React.FC = () => {
       },
       appName,
       appIcon,
-      categories,
-      tasks
+      categories: overrides?.categories || categories,
+      tasks: overrides?.tasks || tasks
     };
+  };
+
+  const tryAutoSave = async (overrides?: { tasks?: Task[], categories?: Category[] }) => {
+    if (!autoSaveEnabled || !currentFileHandle) return;
+
+    try {
+      const data = getExportData(overrides);
+      await saveFile(data);
+      console.log("Auto-saved successfully.");
+
+      // Show notification
+      setShowAutoSaveSuccess(true);
+      setTimeout(() => setShowAutoSaveSuccess(false), 2000);
+    } catch (e) {
+      console.error("Auto-save failed:", e);
+      // Optional: silent fail or toast? For now, silent log to avoid interrupting workflow
+    }
   };
 
   const handleExport = () => {
@@ -425,14 +444,18 @@ const App: React.FC = () => {
 
     if (partialTask.id) {
       // Update
-      setTasks(tasks.map(t => t.id === partialTask.id ? { ...t, ...partialTask } as Task : t));
+      const newTasks = tasks.map(t => t.id === partialTask.id ? { ...t, ...partialTask } as Task : t);
+      setTasks(newTasks);
+      tryAutoSave({ tasks: newTasks });
     } else {
       // Create
       const newTask: Task = {
         ...partialTask as Task,
         id: crypto.randomUUID(),
       };
-      setTasks([...tasks, newTask]);
+      const newTasks = [...tasks, newTask];
+      setTasks(newTasks);
+      tryAutoSave({ tasks: newTasks });
     }
     closeDialog();
   };
@@ -442,14 +465,16 @@ const App: React.FC = () => {
       title: 'タスクの削除',
       message: '本当にこのタスクを削除しますか？',
       onConfirm: () => {
-        setTasks(tasks.filter(t => t.id !== taskId));
+        const newTasks = tasks.filter(t => t.id !== taskId);
+        setTasks(newTasks);
+        tryAutoSave({ tasks: newTasks });
         closeDialog();
       }
     });
   };
 
   const moveTask = (taskId: string, newDate: string, newColumnId: string) => {
-    setTasks(tasks.map(t => {
+    const newTasks = tasks.map(t => {
       if (t.id !== taskId) return t;
 
       const updates: Partial<Task> = { date: newDate };
@@ -460,7 +485,9 @@ const App: React.FC = () => {
         updates.assignee = newColumnId === '__unassigned__' ? '' : newColumnId;
       }
       return { ...t, ...updates };
-    }));
+    });
+    setTasks(newTasks);
+    tryAutoSave({ tasks: newTasks });
   };
 
   const addCategory = () => {
@@ -470,7 +497,9 @@ const App: React.FC = () => {
       defaultText: '',
       onConfirm: (name) => {
         if (name) {
-          setCategories([...categories, { id: crypto.randomUUID(), name }]);
+          const newCategories = [...categories, { id: crypto.randomUUID(), name }];
+          setCategories(newCategories);
+          tryAutoSave({ categories: newCategories });
           closeDialog();
         }
       }
@@ -478,7 +507,9 @@ const App: React.FC = () => {
   };
 
   const updateCategory = (id: string, name: string) => {
-    setCategories(categories.map(c => c.id === id ? { ...c, name } : c));
+    const newCategories = categories.map(c => c.id === id ? { ...c, name } : c);
+    setCategories(newCategories);
+    tryAutoSave({ categories: newCategories });
   };
 
   const deleteCategory = (id: string) => {
@@ -486,8 +517,13 @@ const App: React.FC = () => {
       title: 'カテゴリの削除',
       message: 'このカテゴリを削除すると、関連するすべてのタスクも削除されます。よろしいですか？',
       onConfirm: () => {
-        setCategories(categories.filter(c => c.id !== id));
-        setTasks(tasks.filter(t => t.categoryId !== id));
+        const newCategories = categories.filter(c => c.id !== id);
+        const newTasks = tasks.filter(t => t.categoryId !== id);
+
+        setCategories(newCategories);
+        setTasks(newTasks);
+
+        tryAutoSave({ categories: newCategories, tasks: newTasks });
         closeDialog();
       }
     });
@@ -499,9 +535,11 @@ const App: React.FC = () => {
       currentAppName: appName,
       currentAppIcon: appIcon,
       currentFileName: currentFileHandle?.name, // Pass the file name here
-      onSettingsSave: (name, icon) => {
+      isAutoSaveEnabled: autoSaveEnabled,
+      onSettingsSave: (name, icon, autoSave) => {
         setAppName(name);
         setAppIcon(icon);
+        setAutoSaveEnabled(autoSave);
         closeDialog();
       },
       onResetData: () => {
@@ -561,7 +599,8 @@ const App: React.FC = () => {
             currentName={dialogProps.currentAppName || DEFAULT_APP_NAME}
             currentIcon={dialogProps.currentAppIcon || DEFAULT_APP_ICON}
             currentFileName={dialogProps.currentFileName} // Pass prop
-            onSave={(name, icon) => dialogProps.onSettingsSave?.(name, icon)}
+            isAutoSaveEnabled={dialogProps.isAutoSaveEnabled || false}
+            onSave={(name, icon, autoSave) => dialogProps.onSettingsSave?.(name, icon, autoSave)}
             onReset={dialogProps.onResetData}
             onCancel={closeDialog}
           />
@@ -649,7 +688,30 @@ const App: React.FC = () => {
             </div>
 
             {/* Setting / Export / Import Controls */}
-            <div className="flex items-center gap-1 ml-1 flex-shrink-0">
+            <div className="flex items-center gap-1 ml-1 flex-shrink-0 relative">
+
+              {/* Auto Save Notification - Absolute Positioned */}
+              {showAutoSaveSuccess && (
+                <>
+                  <style>{`
+                    @keyframes fadeInOut {
+                      0% { opacity: 0; transform: translateY(2px) translateX(0px); }
+                      15% { opacity: 1; transform: translateY(0) translateX(0); }
+                      85% { opacity: 1; transform: translateY(0) translateX(0); }
+                      100% { opacity: 0; transform: translateY(-2px) translateX(0); }
+                    }
+                  `}</style>
+                  <div
+                    className="absolute right-full mr-2 px-1.5 py-0.5 bg-green-100 text-green-700 text-[10px] font-medium rounded-full flex items-center gap-1 pointer-events-none whitespace-nowrap shadow-sm border border-green-200"
+                    style={{ animation: 'fadeInOut 2s ease-in-out forwards' }}
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-2.5 w-2.5" viewBox="0 0 20 20" fill="currentColor">
+                      <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                    </svg>
+                    <span>保存完了</span>
+                  </div>
+                </>
+              )}
               <button
                 onClick={openSettings}
                 className="p-1.5 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-full transition-colors"
