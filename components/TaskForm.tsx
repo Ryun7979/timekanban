@@ -4,6 +4,7 @@ import { Task, Category, Subtask } from '../types';
 import { Button } from './UI/Button';
 
 import { COLORS_LIST } from '../utils/colors';
+import { getTaskDisplayName } from '../utils/taskUtils';
 
 interface TaskFormProps {
   initialTask?: Partial<Task>;
@@ -160,6 +161,13 @@ export const TaskForm: React.FC<TaskFormProps> = ({ initialTask, categories, onS
                 onChange={(e) => setAssignee(e.target.value)}
                 placeholder="担当者名"
               />
+            </div>
+            {/* Display Name Preview */}
+            <div className="mt-1 text-xs text-slate-500 flex items-center gap-1 min-h-[1.25rem]">
+              <span className="font-medium">現在の表示名:</span>
+              <span className="bg-slate-100 px-1.5 py-0.5 rounded text-slate-700 border border-slate-200">
+                {getTaskDisplayName({ assignee, subtasks } as any) || <span className="text-slate-400 italic">なし</span>}
+              </span>
             </div>
           </div>
           <div>

@@ -2,6 +2,7 @@
 import React from 'react';
 import { Task } from '../../types';
 import { getColorDef } from '../../utils/colors';
+import { getTaskDisplayName } from '../../utils/taskUtils';
 
 interface TaskCardProps {
   task: Task;
@@ -46,14 +47,28 @@ export const TaskCard: React.FC<TaskCardProps> = ({ task, onClick, onDragStart, 
       <div className="pl-2">
         <h4 className={`text-sm font-medium text-slate-800 leading-tight mb-1 truncate ${isAllCompleted ? 'line-through text-slate-500 opacity-80' : ''}`}>{task.title}</h4>
 
-        {task.assignee && (
-          <div className="flex items-center gap-1.5 mt-1 text-xs text-slate-600">
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5 opacity-70" viewBox="0 0 20 20" fill="currentColor">
-              <path fillRule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clipRule="evenodd" />
-            </svg>
-            <span className="truncate max-w-[120px]">{task.assignee}</span>
-          </div>
-        )}
+        {(() => {
+          const displayName = getTaskDisplayName(task);
+          const responsible = task.assignee;
+
+          if (!displayName) return null;
+
+          return (
+            <div className="flex items-center gap-1.5 mt-1 text-xs text-slate-600">
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5 opacity-70 flex-shrink-0" viewBox="0 0 20 20" fill="currentColor">
+                <path fillRule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clipRule="evenodd" />
+              </svg>
+              <div className="flex items-baseline gap-1 overflow-hidden">
+                <span className="truncate font-medium text-slate-700">{displayName}</span>
+                {responsible && responsible !== displayName && (
+                  <span className="text-[10px] text-slate-400 truncate flex-shrink-0">
+                    (責任者: {responsible})
+                  </span>
+                )}
+              </div>
+            </div>
+          );
+        })()}
 
         {/* Show progress bar if there are subtasks OR if it is manually completed */}
         {(totalSubtasks > 0 || isManualCompleted) && (

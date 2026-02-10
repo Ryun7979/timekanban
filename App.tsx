@@ -1,6 +1,7 @@
 
 import React, { useState, useRef, useMemo } from 'react';
 import { Task, Category, CalendarEvent, DialogType, DialogOptions, DragGhost, ViewMode, GroupByMode } from './types';
+import { getTaskDisplayName } from './utils/taskUtils';
 import { TimelineGrid } from './components/Timeline/TimelineGrid';
 import { Dialog } from './components/UI/Dialog';
 import { TaskForm } from './components/TaskForm';
@@ -180,8 +181,8 @@ const App: React.FC = () => {
     if (groupBy === 'category') {
       return categories;
     } else {
-      // Extract unique assignees
-      const distinctAssignees = Array.from(new Set(tasks.map(t => t.assignee).filter(Boolean))) as string[];
+      // Extract unique display names using the new utility
+      const distinctAssignees = Array.from(new Set(tasks.map(t => getTaskDisplayName(t)).filter(Boolean))) as string[];
       // Sort alphabetically
       distinctAssignees.sort();
 

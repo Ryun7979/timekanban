@@ -3,6 +3,7 @@ import React, { useEffect, useRef, useMemo } from 'react';
 import { Task, Category, CalendarEvent, DragGhost, ViewMode, GroupByMode } from '../../types';
 import { TaskCard } from './TaskCard';
 import { getColorDef } from '../../utils/colors';
+import { getTaskDisplayName } from '../../utils/taskUtils';
 
 // Category interface is sufficient for columns ({id, name})
 interface TimelineGridProps {
@@ -241,10 +242,10 @@ export const TimelineGrid: React.FC<TimelineGridProps> = ({
                 if (groupBy === 'category') {
                   return t.categoryId === col.id;
                 } else {
-                  // Assignee mode
-                  const assignee = t.assignee || '';
-                  if (col.id === '__unassigned__') return assignee === '';
-                  return assignee === col.id;
+                  // Assignee mode (using Display Name)
+                  const displayName = getTaskDisplayName(t) || '';
+                  if (col.id === '__unassigned__') return displayName === '';
+                  return displayName === col.id;
                 }
               }).length;
 
@@ -445,9 +446,10 @@ export const TimelineGrid: React.FC<TimelineGridProps> = ({
                           if (groupBy === 'category') {
                             return t.categoryId === col.id;
                           } else {
-                            const assignee = t.assignee || '';
-                            if (col.id === '__unassigned__') return assignee === '';
-                            return assignee === col.id;
+                            // Assignee mode (using Display Name)
+                            const displayName = getTaskDisplayName(t) || '';
+                            if (col.id === '__unassigned__') return displayName === '';
+                            return displayName === col.id;
                           }
                         });
                         const isGhostHere = dragGhost?.columnId === col.id && dragGhost?.date === dateStr;
