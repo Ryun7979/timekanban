@@ -869,11 +869,11 @@ const App: React.FC = () => {
       )}
 
       {/* Header */}
-      <header className="flex-none p-4 bg-white border-b border-slate-200 shadow-sm z-30">
-        <div className="flex flex-col xl:flex-row items-center gap-4">
+      <header className="flex-none p-4 bg-white border-b border-slate-200 shadow-sm z-30 relative">
+        <div className="flex flex-col xl:flex-row items-center justify-between gap-4">
 
           {/* Left: App Logo & Title */}
-          <div className="flex items-center gap-4 w-full xl:w-auto xl:flex-1">
+          <div className="flex items-center gap-4 w-full xl:w-auto">
             <div className="p-2 bg-blue-600 rounded-lg shadow-lg shadow-blue-200 text-white flex-shrink-0">
               {APP_ICONS[appIcon] || APP_ICONS['kanban']}
             </div>
@@ -1006,8 +1006,10 @@ const App: React.FC = () => {
             </div>
           </div>
 
-          {/* Center: Controls (Date & View Mode) */}
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-3 w-full xl:w-auto">
+          {/* Center: Date Navigation (Absolute Center on XL) */}
+          {/* Center: Date Navigation & View Controls (Resulting group centered on XL) */}
+          <div className="flex flex-col xl:flex-row items-center justify-center gap-3 bg-white/50 p-1 rounded-xl xl:absolute xl:left-1/2 xl:top-1/2 xl:transform xl:-translate-x-1/2 xl:-translate-y-1/2">
+
             {/* Date Navigation */}
             <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-lg">
               <button
@@ -1082,15 +1084,17 @@ const App: React.FC = () => {
                 担当者
               </button>
             </div>
+          </div>
 
-            <div className="flex items-center justify-end gap-2 w-full xl:w-auto xl:flex-1">
-              <Button variant="primary" onClick={() => handleCreateTask(new Date().toISOString().split('T')[0], 'todo')}>
-                + タスク追加
-              </Button>
-              <Button variant="secondary" onClick={handleCreateEvent} title="期間イベントを追加">
-                + イベント追加
-              </Button>
-            </div>
+          {/* Right: View Mode, Group By, Actions */}
+          {/* Right: Actions */}
+          <div className="flex items-center justify-end gap-2 w-full xl:w-auto">
+            <Button variant="primary" onClick={() => handleCreateTask(new Date().toISOString().split('T')[0], 'todo')}>
+              + タスク追加
+            </Button>
+            <Button variant="secondary" onClick={handleCreateEvent} title="期間イベントを追加">
+              + イベント追加
+            </Button>
           </div>
         </div>
       </header>
