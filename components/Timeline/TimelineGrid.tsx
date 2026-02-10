@@ -194,11 +194,29 @@ export const TimelineGrid: React.FC<TimelineGridProps> = ({
           <div className="flex border-b border-slate-200 bg-slate-50 sticky top-0 z-[800] shadow-sm min-w-max">
             {/* Sticky Month Column */}
             <div className="w-16 md:w-24 flex-shrink-0 p-2 border-r border-slate-200 flex flex-col items-center justify-center text-slate-700 bg-slate-50 sticky left-0 z-[900] shadow-[1px_0_0_0_rgba(226,232,240,1)]">
-              <div className="flex items-baseline">
-                <span className="text-xl md:text-2xl font-bold leading-none">{currentDate.getMonth() + 1}</span>
-                <span className="text-xs font-medium ml-0.5">月</span>
-              </div>
-              <span className="text-[10px] text-slate-400 font-medium">{currentDate.getFullYear()}</span>
+              {monthsToShow > 1 ? (
+                <div className="flex flex-col items-center justify-center w-full">
+                  <div className="text-xs md:text-sm font-bold text-slate-700 flex items-center justify-center whitespace-nowrap">
+                    <span>{monthsData[0].month + 1}</span>
+                    <span className="mx-0.5">-</span>
+                    <span>{monthsData[monthsToShow - 1].month + 1}</span>
+                    <span className="text-[10px] md:text-xs ml-0.5 font-medium">月</span>
+                  </div>
+                  <div className="text-[9px] md:text-[10px] text-slate-500 font-medium mt-0.5 whitespace-nowrap scale-90 md:scale-100 origin-center">
+                    {monthsData[0].year === monthsData[monthsToShow - 1].year
+                      ? monthsData[0].year
+                      : `${monthsData[0].year}-${monthsData[monthsToShow - 1].year}`}
+                  </div>
+                </div>
+              ) : (
+                <>
+                  <div className="flex items-baseline">
+                    <span className="text-xl md:text-2xl font-bold leading-none">{currentDate.getMonth() + 1}</span>
+                    <span className="text-xs font-medium ml-0.5">月</span>
+                  </div>
+                  <span className="text-[10px] text-slate-400 font-medium">{currentDate.getFullYear()}</span>
+                </>
+              )}
             </div>
 
             {/* Sticky Event Column Header */}
