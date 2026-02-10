@@ -331,7 +331,17 @@ export const TimelineGrid: React.FC<TimelineGridProps> = ({
                       className={`flex-shrink-0 border-r border-slate-200 relative group transition-colors sticky left-16 md:left-24 shadow-[1px_0_0_0_rgba(226,232,240,1)] ${isWeekend ? 'bg-slate-50/50' : 'bg-white'} hover:bg-slate-50/80`}
                       style={{
                         width: Math.max(96, (maxLanes * 36) + 16) + 'px',
-                        zIndex: 400 - (monthIdx * 40 + dayIdx)
+                        /* Dynamic Z-Index:
+                           - If has event start (High Priority): Future > Past (2000 + idx)
+                           - If no event start (Low Priority / Empty): Past > Future (1000 - idx)
+                             -> This allows past event text to overflow into empty future cells,
+                                but be covered by future cells that have events.
+                        */
+                        zIndex: (() => {
+                          const hasEventStart = events.some(e => e.startDate === dateStr);
+                          const globalDayIndex = monthIdx * 40 + dayIdx;
+                          return hasEventStart ? (2000 + globalDayIndex) : (1000 - globalDayIndex);
+                        })()
                       }}
                       onDragOver={(e) => handleDragOver(e, dateStr, 'events-column')}
                       onDrop={(e) => handleDrop(e, dateStr, 'events-column')}
@@ -340,7 +350,11 @@ export const TimelineGrid: React.FC<TimelineGridProps> = ({
                       <div className={`absolute inset-0 ${isWeekend ? 'bg-slate-50' : 'bg-white'} -z-10`} />
 
                       <div className="w-full h-full relative">
-                        {events.map(event => {
+                        {/* Render events sorted by date (Past -> Future) so Future events are on top */}
+                        {[...events].sort((a, b) => {
+                          if (a.startDate !== b.startDate) return a.startDate.localeCompare(b.startDate);
+                          return 0;
+                        }).map(event => {
                           if (event.startDate <= dateStr && dateStr <= event.endDate) {
                             const isStart = event.startDate === dateStr;
                             const isEnd = event.endDate === dateStr;

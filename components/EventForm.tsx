@@ -9,9 +9,10 @@ interface EventFormProps {
     onSubmit: (event: Partial<CalendarEvent>) => void;
     onCancel: () => void;
     onDelete?: (id: string) => void;
+    onDuplicate?: (event: Partial<CalendarEvent>) => void;
 }
 
-export const EventForm: React.FC<EventFormProps> = ({ initialEvent, onSubmit, onCancel, onDelete }) => {
+export const EventForm: React.FC<EventFormProps> = ({ initialEvent, onSubmit, onCancel, onDelete, onDuplicate }) => {
     const [title, setTitle] = useState(initialEvent?.title || '');
     const [startDate, setStartDate] = useState(initialEvent?.startDate || new Date().toISOString().split('T')[0]);
     const [endDate, setEndDate] = useState(initialEvent?.endDate || new Date().toISOString().split('T')[0]);
@@ -28,6 +29,16 @@ export const EventForm: React.FC<EventFormProps> = ({ initialEvent, onSubmit, on
 
         onSubmit({
             id: initialEvent?.id,
+            title,
+            startDate,
+            endDate,
+            color,
+        });
+    };
+
+    const handleDuplicate = () => {
+        if (!onDuplicate) return;
+        onDuplicate({
             title,
             startDate,
             endDate,
@@ -90,10 +101,15 @@ export const EventForm: React.FC<EventFormProps> = ({ initialEvent, onSubmit, on
             </div>
 
             <div className="flex justify-between items-center pt-2 border-t border-slate-100">
-                <div>
+                <div className="flex gap-2">
                     {initialEvent?.id && onDelete && (
                         <Button variant="danger" type="button" onClick={() => onDelete(initialEvent.id!)}>
                             削除
+                        </Button>
+                    )}
+                    {initialEvent?.id && onDuplicate && (
+                        <Button variant="secondary" type="button" onClick={handleDuplicate}>
+                            複製
                         </Button>
                     )}
                 </div>

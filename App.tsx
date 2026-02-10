@@ -686,6 +686,19 @@ const App: React.FC = () => {
     closeDialog();
   };
 
+  const duplicateEvent = (partialEvent: Partial<CalendarEvent>) => {
+    if (!partialEvent.title) return;
+
+    const newEvent: CalendarEvent = {
+      ...partialEvent as CalendarEvent,
+      id: crypto.randomUUID(),
+    };
+    const newEvents = [...events, newEvent];
+    updateData({ events: newEvents });
+    tryAutoSave({ events: newEvents });
+    closeDialog();
+  };
+
   const deleteEvent = (eventId: string) => {
     openDialog('confirm', {
       title: 'イベントの削除',
@@ -803,6 +816,7 @@ const App: React.FC = () => {
             onSubmit={saveEvent}
             onCancel={closeDialog}
             onDelete={dialogProps.event?.id ? deleteEvent : undefined}
+            onDuplicate={dialogProps.event?.id ? duplicateEvent : undefined}
           />
         );
       case 'task-form':
