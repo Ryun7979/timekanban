@@ -304,7 +304,7 @@ export const TaskForm: React.FC<TaskFormProps> = ({ initialTask, categories, onS
                 // Duplicate Logic
                 const duplicatedSubtasks = subtasks.map(s => ({ ...s, id: crypto.randomUUID() }));
                 onSubmit({
-                  title: `${title} (コピー)`,
+                  title: title,
                   description,
                   date,
                   categoryId,
