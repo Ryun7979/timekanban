@@ -1105,7 +1105,7 @@ const App: React.FC = () => {
                   if (newMode) setViewMode('6months');
                 }}
                 className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-all flex items-center gap-1 ${isCompactMode ? 'bg-blue-100 text-blue-700 ring-1 ring-blue-200' : 'text-slate-500 hover:text-slate-700 hover:bg-slate-200/50'}`}
-                title="圧縮表示（俯瞰モード）"
+                title="圧縮表示（縮小モード）"
               >
                 <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   {isCompactMode ? (
@@ -1114,7 +1114,7 @@ const App: React.FC = () => {
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 10h16M4 14h16M4 18h16" />
                   )}
                 </svg>
-                <span>俯瞰</span>
+                <span>縮小</span>
               </button>
             </div>
 
