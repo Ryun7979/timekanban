@@ -61,7 +61,7 @@ export const TaskCard: React.FC<TaskCardProps> = React.memo(({ task, onClick, on
         e.stopPropagation();
         onClick(task);
       }}
-      className={`${colorDef.lightBg} border ${colorDef.border} rounded-md p-2 shadow-sm hover:shadow-md cursor-grab active:cursor-grabbing transition-all group mb-2 relative overflow-hidden select-none`}
+      className={`${colorDef.lightBg} border ${colorDef.border} rounded-md p-2 shadow-sm hover:shadow-md cursor-grab active:cursor-grabbing transition-all group mb-1 relative overflow-hidden select-none`}
     >
       {/* 左端のアクセントカラー（メイン色） */}
       <div className={`absolute left-0 top-0 bottom-0 w-1 ${colorDef.value}`}></div>

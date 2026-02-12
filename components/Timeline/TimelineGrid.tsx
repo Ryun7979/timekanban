@@ -45,7 +45,7 @@ export const TimelineGrid: React.FC<TimelineGridProps> = ({
   const containerRef = useRef<HTMLDivElement>(null);
 
   const monthsToShow = viewMode === '1month' ? 1 : viewMode === '3months' ? 3 : 6;
-  const ROW_HEIGHT = 48; // for compact mode
+  const ROW_HEIGHT = isCompactMode ? 12 : 48;
 
   // Start Date Calculation
   const startDate = useMemo(() => {
@@ -256,33 +256,42 @@ export const TimelineGrid: React.FC<TimelineGridProps> = ({
                 const isToday = dateStr === new Date().toISOString().split('T')[0];
 
                 return (
-                  <TimelineRow
-                    key={dateStr}
-                    dateStr={dateStr}
-                    day={d}
-                    currentDayDate={dateObj}
-                    isWeekend={isWeekend}
-                    isToday={isToday}
-                    isCompactMode={isCompactMode}
-                    ROW_HEIGHT={ROW_HEIGHT}
-                    events={events}
-                    maxLanes={maxLanes}
-                    eventLanes={eventLanes}
-                    columns={columns}
-                    groupBy={groupBy}
-                    tasks={tasks}
-                    dragGhost={dragGhost}
-                    onDragOver={handleDragOver}
-                    onDrop={handleDropWithEvents}
-                    onCellClick={onCellClick}
-                    onTaskClick={onTaskClick}
-                    onTaskDragStart={onTaskDragStart}
-                    onTaskDragEnd={onTaskDragEnd}
-                    onEventDragStart={handleEventDragStart}
-                    onEventClick={onEventClick}
-                    monthIdx={mIdx}
-                    dayIdx={dIdx}
-                  />
+                  <React.Fragment key={dateStr}>
+                    {d === 1 && (
+                      <div className="flex bg-slate-100/80 backdrop-blur-sm border-y border-slate-200 sticky left-0 z-[800] py-1 px-4 shadow-sm">
+                        <div className="flex items-baseline gap-2">
+                          <span className="text-[10px] font-black text-slate-400 tracking-tighter uppercase">{m.year}</span>
+                          <span className="text-sm font-black text-slate-700">{m.month + 1}月</span>
+                        </div>
+                      </div>
+                    )}
+                    <TimelineRow
+                      dateStr={dateStr}
+                      day={d}
+                      currentDayDate={dateObj}
+                      isWeekend={isWeekend}
+                      isToday={isToday}
+                      isCompactMode={isCompactMode}
+                      ROW_HEIGHT={ROW_HEIGHT}
+                      events={events}
+                      maxLanes={maxLanes}
+                      eventLanes={eventLanes}
+                      columns={columns}
+                      groupBy={groupBy}
+                      tasks={tasks}
+                      dragGhost={dragGhost}
+                      onDragOver={handleDragOver}
+                      onDrop={handleDropWithEvents}
+                      onCellClick={onCellClick}
+                      onTaskClick={onTaskClick}
+                      onTaskDragStart={onTaskDragStart}
+                      onTaskDragEnd={onTaskDragEnd}
+                      onEventDragStart={handleEventDragStart}
+                      onEventClick={onEventClick}
+                      monthIdx={mIdx}
+                      dayIdx={dIdx}
+                    />
+                  </React.Fragment>
                 );
               })}
             </div>

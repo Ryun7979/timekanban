@@ -43,7 +43,7 @@ export const TimelineRow: React.FC<TimelineRowProps> = React.memo(({
     return (
         <div
             id={`date-${dateStr}`}
-            className={`flex border-b border-slate-100 ${isCompactMode ? '' : 'min-h-[100px]'} ${isWeekend ? 'bg-slate-50/50' : 'bg-white'} min-w-max`}
+            className={`flex border-b border-slate-100 ${isCompactMode ? '' : 'min-h-[40px]'} ${isWeekend ? 'bg-slate-50/50' : 'bg-white'} min-w-max`}
             style={isCompactMode ? { minHeight: `${ROW_HEIGHT}px` } : undefined}
         >
 
@@ -163,7 +163,7 @@ export const TimelineRow: React.FC<TimelineRowProps> = React.memo(({
                             onDrop={(e) => onDrop(e, dateStr, col.id)}
                             onClick={() => onCellClick(dateStr, col.id)}
                         >
-                            <div className={`flex flex-col h-full w-full ${isCompactMode ? 'gap-0.5 px-0.5' : 'gap-2'}`}>
+                            <div className={`flex flex-col w-full ${isCompactMode ? 'gap-0.5 px-0.5' : 'gap-1'}`}>
                                 {cellTasks.map(task => (
                                     <TaskCard
                                         key={task.id}
@@ -179,7 +179,7 @@ export const TimelineRow: React.FC<TimelineRowProps> = React.memo(({
                                         ここにドロップ
                                     </div>
                                 )}
-                                <div className={`flex-grow ${isCompactMode ? 'min-h-[10px]' : 'min-h-[2rem]'}`}></div>
+                                <div className={`${isCompactMode ? 'h-[4px]' : 'h-[8px]'} flex-none`}></div>
                             </div>
                         </div>
                     );
