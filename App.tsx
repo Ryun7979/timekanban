@@ -10,6 +10,7 @@ import { useFileOperations } from './hooks/useFileOperations';
 import { useTaskOperations } from './hooks/useTaskOperations';
 import { GlobalDialogs } from './components/UI/GlobalDialogs';
 import { Header } from './components/Layout/Header';
+import { RemainingTaskList } from './components/Timeline/RemainingTaskList';
 
 const App: React.FC = () => {
   // --- Data & State ---
@@ -201,11 +202,19 @@ const App: React.FC = () => {
             </svg>
             カレンダー
           </div>
-          <div className="flex-1 overflow-y-auto p-4 custom-scrollbar">
+          <div className="overflow-y-auto p-2 custom-scrollbar">
             <CalendarPicker
               initialDate={currentDate}
               tasks={tasks}
               onSelect={(dateStr) => setCurrentDate(new Date(dateStr))}
+            />
+          </div>
+
+          <div className="flex-1 overflow-hidden border-t border-slate-100 flex flex-col min-h-0">
+            <RemainingTaskList
+              tasks={tasks}
+              categories={categories}
+              onDateSelect={(dateStr) => setCurrentDate(new Date(dateStr))}
             />
           </div>
 

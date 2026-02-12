@@ -9,9 +9,10 @@ interface TaskCardProps {
   onDragStart: (e: React.DragEvent, task: Task) => void;
   onDragEnd?: () => void;
   isCompact?: boolean;
+  id?: string;
 }
 
-export const TaskCard: React.FC<TaskCardProps> = React.memo(({ task, onClick, onDragStart, onDragEnd, isCompact = false }) => {
+export const TaskCard: React.FC<TaskCardProps> = React.memo(({ task, onClick, onDragStart, onDragEnd, isCompact = false, id }) => {
   const completedSubtasks = (task.subtasks || []).filter(s => s.completed).length;
   const totalSubtasks = task.subtasks?.length || 0;
 
@@ -37,7 +38,7 @@ export const TaskCard: React.FC<TaskCardProps> = React.memo(({ task, onClick, on
     const tooltip = `${task.title} ${subtaskStatus}\n日付: ${task.date}\n担当: ${displayName || '未設定'}`;
 
     return (
-      <div className="relative group/task w-full flex-shrink-0" style={{ marginBottom: '0.33px' }}>
+      <div id={id} className="relative group/task w-full flex-shrink-0" style={{ marginBottom: '0.33px' }}>
         <div
           className={`${colorDef.value} rounded-sm hover:opacity-100 transition-opacity w-full`}
           style={{ height: '6px' }}
@@ -61,6 +62,7 @@ export const TaskCard: React.FC<TaskCardProps> = React.memo(({ task, onClick, on
         e.stopPropagation();
         onClick(task);
       }}
+      id={id}
       className={`${colorDef.lightBg} border ${colorDef.border} rounded-md p-2 shadow-sm hover:shadow-md cursor-grab active:cursor-grabbing transition-all group mb-1 relative overflow-hidden select-none`}
     >
       {/* 左端のアクセントカラー（メイン色） */}

@@ -167,6 +167,7 @@ export const TimelineRow: React.FC<TimelineRowProps> = React.memo(({
                                 {cellTasks.map(task => (
                                     <TaskCard
                                         key={task.id}
+                                        id={'task-card-' + task.id}
                                         task={task}
                                         onClick={() => !isCompactMode && onTaskClick(task)}
                                         onDragStart={onTaskDragStart}
