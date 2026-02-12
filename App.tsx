@@ -28,7 +28,7 @@ const App: React.FC = () => {
 
   // View State
   const [currentDate, setCurrentDate] = useState(new Date());
-  const [viewMode, setViewMode] = useState<ViewMode>('1month');
+  const [viewMode, setViewMode] = useState<ViewMode>('6months');
   const [groupBy, setGroupBy] = useState<GroupByMode>('category');
   const [isCompactMode, setIsCompactMode] = useState(false);
   const [autoSaveEnabled, setAutoSaveEnabled] = useState(false);
