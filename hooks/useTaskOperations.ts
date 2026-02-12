@@ -21,6 +21,18 @@ interface UseTaskOperationsProps {
     groupBy: GroupByMode;
     currentDate: Date;
 
+    setEvents: (e: CalendarEvent[]) => void;
+
+    // View State Setters
+    setCurrentDate: (d: Date) => void;
+    setViewMode: (v: any) => void; // Using any to avoid circular dependency or import issues if simple
+    setGroupBy: (g: GroupByMode) => void;
+    setIsCompactMode: (c: boolean) => void;
+
+    // App Settings Setters
+    setAutoSaveEnabled: (b: boolean) => void;
+    setAutoUpdateEnabled: (b: boolean) => void;
+
     openDialog: (type: DialogType, options?: DialogOptions) => void;
     closeDialog: () => void;
     currentFileName?: string;
@@ -34,9 +46,16 @@ export const useTaskOperations = ({
     appIcon,
     setTasks,
     setCategories,
+    setEvents,
     setAppName,
     setAppIcon,
     setCurrentFileHandle,
+    setCurrentDate,
+    setViewMode,
+    setGroupBy,
+    setIsCompactMode,
+    setAutoSaveEnabled,
+    setAutoUpdateEnabled,
     updateData,
     tryAutoSave,
     groupBy,
@@ -269,19 +288,36 @@ export const useTaskOperations = ({
                 // Close settings dialog first, then open confirmation
                 openDialog('confirm', {
                     title: 'データの完全初期化',
-                    message: '本当にすべてのデータ（タスク、カテゴリ、設定）を初期化しますか？\nこの操作は取り消せません。',
+                    message: '本当にすべてのデータ（タスク、カテゴリ、イベント、設定）を初期化しますか？\nこの操作は取り消せません。',
                     onConfirm: () => {
+                        // Reset all data
                         setTasks(INITIAL_TASKS);
                         setCategories(INITIAL_CATEGORIES);
+                        setEvents([]);
                         setAppName(DEFAULT_APP_NAME);
                         setAppIcon(DEFAULT_APP_ICON);
                         setCurrentFileHandle(null);
+
+                        // Reset view settings
+                        setCurrentDate(new Date());
+                        setViewMode('6months');
+                        setGroupBy('category');
+                        setIsCompactMode(false);
+
+                        // Reset app settings
+                        setAutoSaveEnabled(false);
+                        setAutoUpdateEnabled(false);
+
                         closeDialog();
                     }
                 });
             }
         });
-    }, [appName, appIcon, currentFileName, openDialog, closeDialog, setAppName, setAppIcon, setTasks, setCategories, setCurrentFileHandle]);
+    }, [
+        appName, appIcon, currentFileName, openDialog, closeDialog,
+        setAppName, setAppIcon, setTasks, setCategories, setEvents, setCurrentFileHandle,
+        setCurrentDate, setViewMode, setGroupBy, setIsCompactMode, setAutoSaveEnabled, setAutoUpdateEnabled
+    ]);
 
     return {
         handleCreateTask,

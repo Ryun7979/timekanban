@@ -52,7 +52,8 @@ const App: React.FC = () => {
 
   const taskOps = useTaskOperations({
     tasks, categories, events, appName, appIcon,
-    setTasks, setCategories, setAppName, setAppIcon, setCurrentFileHandle,
+    setTasks, setCategories, setEvents, setAppName, setAppIcon, setCurrentFileHandle,
+    setCurrentDate, setViewMode, setGroupBy, setIsCompactMode, setAutoSaveEnabled, setAutoUpdateEnabled,
     updateData, tryAutoSave: fileOps.tryAutoSave,
     groupBy, currentDate,
     openDialog, closeDialog,
