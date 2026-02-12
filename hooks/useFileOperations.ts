@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { Task, Category, CalendarEvent, DialogType, DialogOptions } from '../types';
-import { INITIAL_TASKS, INITIAL_CATEGORIES, DEFAULT_APP_NAME, DEFAULT_APP_ICON } from '../utils/constants';
+
 
 interface UseFileOperationsProps {
     tasks: Task[];
