@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { ExportData } from '../types';
 import { saveFileHandle, getLastFileHandle } from '../utils/db';
 
@@ -100,11 +100,16 @@ export const useFileSystem = () => {
         return readFile(file);
     }, [currentFileHandle, readFile]);
 
+    const isInitialMount = useRef(true);
+
     // Auto-save handle to DB when it changes
     useEffect(() => {
-        if (currentFileHandle) {
-            saveFileHandle(currentFileHandle);
+        if (isInitialMount.current) {
+            isInitialMount.current = false;
+            return;
         }
+
+        saveFileHandle(currentFileHandle);
     }, [currentFileHandle]);
 
     const restoreLastHandle = useCallback(async () => {

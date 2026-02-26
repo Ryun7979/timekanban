@@ -17,18 +17,20 @@ const initDB = (): Promise<IDBDatabase> => {
     });
 };
 
-export const saveFileHandle = async (handle: FileSystemFileHandle): Promise<void> => {
+export const saveFileHandle = async (handle: FileSystemFileHandle | null): Promise<void> => {
     try {
         const db = await initDB();
         return new Promise((resolve, reject) => {
             const transaction = db.transaction(STORE_NAME, 'readwrite');
             const store = transaction.objectStore(STORE_NAME);
-            const request = store.put(handle, 'lastHandle');
+
+            const request = handle ? store.put(handle, 'lastHandle') : store.delete('lastHandle');
+
             request.onsuccess = () => resolve();
             request.onerror = () => reject(request.error);
         });
     } catch (error) {
-        console.error("Failed to save file handle to DB:", error);
+        console.error("Failed to save/delete file handle to DB:", error);
         // Suppress error to avoid breaking app flow
     }
 };
