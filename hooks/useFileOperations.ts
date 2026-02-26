@@ -140,7 +140,7 @@ export const useFileOperations = ({
                         try {
                             const file = await handle.getFile();
                             const data = await readFile(file);
-                            processImportedData(data, handle);
+                            processImportedData(data, handle, true);
                         } catch (e: any) {
                             console.error("Auto-load failed:", e);
                             openDialog('alert', { title: '自動読み込みエラー', message: `ファイルの読み込みに失敗しました。\n${e.message || '不明なエラー'}` });
@@ -155,7 +155,7 @@ export const useFileOperations = ({
                                     if ((await (handle as any).requestPermission(opts)) === 'granted') {
                                         const file = await handle.getFile();
                                         const data = await readFile(file);
-                                        processImportedData(data, handle);
+                                        processImportedData(data, handle, true);
                                     } else {
                                         openDialog('alert', { title: '権限エラー', message: 'ファイルへのアクセスが許可されませんでした。' });
                                     }
