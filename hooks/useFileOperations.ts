@@ -347,7 +347,7 @@ export const useFileOperations = ({
 
         try {
             const data = await reloadFile();
-            processImportedData(data, currentFileHandle);
+            processImportedData(data, currentFileHandle, true);
         } catch (error: any) {
             console.error("Reload Error:", error);
             let message = `ファイルの読み込み中にエラーが発生しました。\n${error.message || '不明なエラー'}`;

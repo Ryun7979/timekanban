@@ -31,9 +31,31 @@ const App: React.FC = () => {
   const [viewMode, setViewMode] = useState<ViewMode>('6months');
   const [groupBy, setGroupBy] = useState<GroupByMode>('category');
   const [isCompactMode, setIsCompactMode] = useState(false);
-  const [autoSaveEnabled, setAutoSaveEnabled] = useState(false);
-  const [autoUpdateEnabled, setAutoUpdateEnabled] = useState(false);
+  const [autoSaveEnabled, setAutoSaveEnabled] = useState(() => {
+    try {
+      const item = localStorage.getItem('autoSaveEnabled');
+      return item ? JSON.parse(item) : false;
+    } catch {
+      return false;
+    }
+  });
+  const [autoUpdateEnabled, setAutoUpdateEnabled] = useState(() => {
+    try {
+      const item = localStorage.getItem('autoUpdateEnabled');
+      return item ? JSON.parse(item) : false;
+    } catch {
+      return false;
+    }
+  });
   const [dragGhost, setDragGhost] = useState<DragGhost | null>(null);
+
+  useEffect(() => {
+    localStorage.setItem('autoSaveEnabled', JSON.stringify(autoSaveEnabled));
+  }, [autoSaveEnabled]);
+
+  useEffect(() => {
+    localStorage.setItem('autoUpdateEnabled', JSON.stringify(autoUpdateEnabled));
+  }, [autoUpdateEnabled]);
 
   // Hooks
   const { dialogOpen, dialogType, dialogProps, openDialog, closeDialog } = useDialog();
