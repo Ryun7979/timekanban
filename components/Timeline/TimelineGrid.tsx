@@ -14,6 +14,7 @@ interface TimelineGridProps {
   onEventClick: (event: CalendarEvent) => void;
   onCellClick: (dateStr: string, columnId: string) => void;
   onTaskMove: (taskId: string, newDate: string, newColumnId: string) => void;
+  onTaskComplete?: (taskId: string) => void;
   onEventDateUpdate: (eventId: string, newStartDate: string, newEndDate: string) => void;
   onCategoryAdd: () => void;
   onCategoryUpdate: (id: string, name: string) => void;
@@ -34,6 +35,7 @@ export const TimelineGrid: React.FC<TimelineGridProps> = ({
   onEventClick,
   onCellClick,
   onTaskMove,
+  onTaskComplete,
   onEventDateUpdate,
   onCategoryAdd,
   onCategoryUpdate,
@@ -284,6 +286,7 @@ export const TimelineGrid: React.FC<TimelineGridProps> = ({
                       onDrop={handleDropWithEvents}
                       onCellClick={onCellClick}
                       onTaskClick={onTaskClick}
+                      onTaskComplete={onTaskComplete}
                       onTaskDragStart={onTaskDragStart}
                       onTaskDragEnd={onTaskDragEnd}
                       onEventDragStart={handleEventDragStart}

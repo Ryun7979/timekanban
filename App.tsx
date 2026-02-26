@@ -185,6 +185,10 @@ const App: React.FC = () => {
             onEventClick={taskOps.handleEditEvent}
             onCellClick={taskOps.handleCreateTask}
             onTaskMove={taskOps.moveTask}
+            onTaskComplete={(taskId) => {
+              const task = tasks.find(t => t.id === taskId);
+              if (task) taskOps.saveTask({ ...task, isDone: true });
+            }}
             onEventDateUpdate={taskOps.handleUpdateEventDate}
             onCategoryAdd={taskOps.addCategory}
             onCategoryUpdate={taskOps.updateCategory}

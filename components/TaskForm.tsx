@@ -22,6 +22,7 @@ export const TaskForm: React.FC<TaskFormProps> = ({ initialTask, categories, onS
   const [color, setColor] = useState(initialTask?.color || 'bg-blue-500');
   const [subtasks, setSubtasks] = useState<Subtask[]>(initialTask?.subtasks || []);
   const [isCompleted, setIsCompleted] = useState(initialTask?.isCompleted || false);
+  const [isDone, setIsDone] = useState(initialTask?.isDone || false);
 
 
   // Drag & Drop state
@@ -74,6 +75,7 @@ export const TaskForm: React.FC<TaskFormProps> = ({ initialTask, categories, onS
       assignee,
       color,
       isCompleted: subtasks.length === 0 ? isCompleted : false,
+      isDone,
     });
   };
 
@@ -108,6 +110,21 @@ export const TaskForm: React.FC<TaskFormProps> = ({ initialTask, categories, onS
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
       <div className="space-y-4">
+        {isDone && (
+          <div className="bg-slate-200 text-slate-700 p-3 rounded-lg flex items-center justify-between shadow-sm border border-slate-300">
+            <div className="flex items-center gap-2 font-bold uppercase tracking-wide">
+              <span className="text-xl">🙌</span>
+              <span>DONE - 完了済みのタスク</span>
+            </div>
+            <button
+              type="button"
+              onClick={() => setIsDone(false)}
+              className="bg-white hover:bg-slate-50 text-slate-600 px-3 py-1.5 rounded text-sm font-medium transition-colors border border-slate-300 shadow-sm"
+            >
+              未完了に戻す
+            </button>
+          </div>
+        )}
         <div>
           <label className="block text-sm font-medium text-slate-700 mb-1">タイトル</label>
           <input
@@ -320,6 +337,7 @@ export const TaskForm: React.FC<TaskFormProps> = ({ initialTask, categories, onS
                   assignee,
                   color,
                   isCompleted: false, // Reset completion status for new task
+                  isDone: false, // Reset done status
                   // id is undefined to trigger creation
                 });
               }}

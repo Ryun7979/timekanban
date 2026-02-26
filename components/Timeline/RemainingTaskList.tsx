@@ -14,7 +14,7 @@ export const RemainingTaskList: React.FC<RemainingTaskListProps> = ({ tasks, cat
     const remainingTasks = useMemo(() => {
         return tasks.filter(task => {
             // 親タスクが完了済みとしてマークされている場合は除外
-            if (task.isCompleted) return false;
+            if (task.isCompleted || task.isDone) return false;
 
             // サブタスクがある場合、すべてのサブタスクが完了していれば除外
             if (task.subtasks && task.subtasks.length > 0) {

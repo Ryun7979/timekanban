@@ -132,58 +132,44 @@ export const useFileOperations = ({
     // --- Auto-Load Last File ---
     useEffect(() => {
         const init = async () => {
-            const handle = await restoreLastHandle();
-            if (handle) {
-                const opts: any = { mode: 'read' };
-                if ((await (handle as any).queryPermission(opts)) === 'granted') {
-                    try {
-                        const file = await handle.getFile();
-                        const data = await readFile(file);
-                        processImportedData(data, handle, true); // Silent load initially? App.tsx wasn't silent for processImportedData but logic was slightly different. 
-                        // App.tsx called processImportedData(data, handle). Default silent=false.
-                        // Wait, initially App.tsx logic:
-                        // if granted -> processImportedData(data, handle) (silent undefined -> false) -> shows confirmation? 
-                        // Actually in App.tsx line 405: if (silent) applied immediately.
-                        // But look at line 47 in App.tsx: processImportedData(data, handle); -> silent is false.
-                        // So it asked for confirmation even on auto-load? 
-                        // Checking App.tsx line 47... 
-                        // Ah, line 47: processImportedData(data, handle).
-                        // Line 365: processImportedData(data, handle, silent=false).
-                        // So on auto-load it showed a confirmation dialog? 
-                        // "data.tasks.length... overwrites current data."
-                        // But on initial load, current data is empty/default.
-                        // Maybe we should make it silent if it's auto-load on startup?
-                        // The user code suggests it popped up a dialog. I will keep behavior consistent or strict.
-                        // However, usually auto-load is silent.
-                        // In App.tsx line 133 (auto update) it uses silent=true.
-                        // In App.tsx line 47 (init) it uses silent=false (default).
-                        // I will use `false` to match App.tsx EXACTLY, even if it seems annoying.
-                        // Wait, if I use `false`, it opens a dialog.
-                        // If I change it to `true` it might be better, but I promised no functional changes.
-                        // But wait, `processImportedData` in App.tsx line 47 calls it without silent arg.
-                        // So I should replicate that.
-                        processImportedData(data, handle);
-                    } catch (e) {
-                        console.error("Auto-load failed:", e);
-                    }
-                } else {
-                    openDialog('confirm', {
-                        title: '以前のファイルを開く',
-                        message: `前回開いていたファイル「${handle.name}」を読み込みますか？\n（ブラウザにより権限の確認が求められます）`,
-                        onConfirm: async () => {
-                            try {
-                                if ((await (handle as any).requestPermission(opts)) === 'granted') {
-                                    const file = await handle.getFile();
-                                    const data = await readFile(file);
-                                    processImportedData(data, handle);
-                                }
-                            } catch (e) {
-                                console.error("Permission request failed:", e);
-                            }
-                            closeDialog();
+            try {
+                const handle = await restoreLastHandle();
+                if (handle) {
+                    const opts: any = { mode: 'readwrite' };
+                    if ((await (handle as any).queryPermission(opts)) === 'granted') {
+                        try {
+                            const file = await handle.getFile();
+                            const data = await readFile(file);
+                            processImportedData(data, handle);
+                        } catch (e: any) {
+                            console.error("Auto-load failed:", e);
+                            openDialog('alert', { title: '自動読み込みエラー', message: `ファイルの読み込みに失敗しました。\n${e.message || '不明なエラー'}` });
                         }
-                    });
+                    } else {
+                        openDialog('confirm', {
+                            title: '以前のファイルを開く',
+                            message: `前回開いていたファイル「${handle.name}」を読み込みますか？\n（ブラウザにより権限の確認が求められます）`,
+                            onConfirm: async () => {
+                                closeDialog();
+                                try {
+                                    if ((await (handle as any).requestPermission(opts)) === 'granted') {
+                                        const file = await handle.getFile();
+                                        const data = await readFile(file);
+                                        processImportedData(data, handle);
+                                    } else {
+                                        openDialog('alert', { title: '権限エラー', message: 'ファイルへのアクセスが許可されませんでした。' });
+                                    }
+                                } catch (e: any) {
+                                    console.error("Permission request failed:", e);
+                                    openDialog('alert', { title: '読み込みエラー', message: `権限の要求中にエラーが発生しました。\n${e.message || '不明なエラー'}` });
+                                }
+                            }
+                        });
+                    }
                 }
+            } catch (e: any) {
+                console.error("Failed to restore handle:", e);
+                openDialog('alert', { title: '復元エラー', message: `前回のファイルの復元に失敗しました。\n${e.message || '不明なエラー'}` });
             }
         };
         init();

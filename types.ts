@@ -25,6 +25,7 @@ export interface Task {
   color?: string;
   assignee?: string;
   isCompleted?: boolean; // Manually marked as completed (mainly for tasks without subtasks)
+  isDone?: boolean; // Task is fully marked as done
 }
 
 export interface Category {

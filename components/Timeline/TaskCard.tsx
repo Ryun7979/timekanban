@@ -6,13 +6,14 @@ import { getTaskDisplayName } from '../../utils/taskUtils';
 interface TaskCardProps {
   task: Task;
   onClick: (task: Task) => void;
+  onComplete?: () => void;
   onDragStart: (e: React.DragEvent, task: Task) => void;
   onDragEnd?: () => void;
   isCompact?: boolean;
   id?: string;
 }
 
-export const TaskCard: React.FC<TaskCardProps> = React.memo(({ task, onClick, onDragStart, onDragEnd, isCompact = false, id }) => {
+export const TaskCard: React.FC<TaskCardProps> = React.memo(({ task, onClick, onComplete, onDragStart, onDragEnd, isCompact = false, id }) => {
   const completedSubtasks = (task.subtasks || []).filter(s => s.completed).length;
   const totalSubtasks = task.subtasks?.length || 0;
 
@@ -63,13 +64,13 @@ export const TaskCard: React.FC<TaskCardProps> = React.memo(({ task, onClick, on
         onClick(task);
       }}
       id={id}
-      className={`${colorDef.lightBg} border ${colorDef.border} rounded-md p-2 shadow-sm hover:shadow-md cursor-grab active:cursor-grabbing transition-all group mb-1 relative overflow-hidden select-none`}
+      className={`${task.isDone ? 'bg-slate-100 border-slate-300 opacity-80 grayscale-[30%]' : `${colorDef.lightBg} border ${colorDef.border}`} rounded-md p-2 shadow-sm hover:shadow-md cursor-grab active:cursor-grabbing transition-all group mb-1 relative overflow-hidden select-none`}
     >
       {/* 左端のアクセントカラー（メイン色） */}
-      <div className={`absolute left-0 top-0 bottom-0 w-1 ${colorDef.value}`}></div>
+      <div className={`absolute left-0 top-0 bottom-0 w-1 ${task.isDone ? 'bg-slate-400' : colorDef.value}`}></div>
 
       <div className="pl-2">
-        <h4 className={`text-sm font-medium text-slate-800 leading-tight mb-1 truncate ${isAllCompleted ? 'line-through text-slate-500 opacity-80' : ''}`}>{task.title}</h4>
+        <h4 className={`text-sm font-medium leading-tight mb-1 truncate ${task.isDone ? 'line-through text-slate-500' : isAllCompleted ? 'line-through text-slate-500 opacity-80' : 'text-slate-800'}`}>{task.title}</h4>
 
         {(() => {
           const displayName = getTaskDisplayName(task);
@@ -95,13 +96,30 @@ export const TaskCard: React.FC<TaskCardProps> = React.memo(({ task, onClick, on
         })()}
 
         {/* Show progress bar if there are subtasks OR if it is manually completed */}
-        {(totalSubtasks > 0 || isManualCompleted) && (
+        {(totalSubtasks > 0 || isManualCompleted || task.isDone) && (
           <div className="mt-2">
-            {isAllCompleted ? (
-              <div className="flex items-center justify-center gap-1 bg-gradient-to-r from-emerald-400 to-teal-500 text-white py-0.5 px-2 rounded shadow-sm">
-                <span className="text-xs">✨</span>
-                <span className="text-xs font-bold tracking-wide">Ready!</span>
-                <span className="text-xs">✨</span>
+            {task.isDone ? (
+              <div className="flex items-center justify-center gap-1 bg-slate-300 text-slate-700 py-0.5 px-2 rounded shadow-sm border border-slate-400">
+                <span className="text-[10px] font-bold tracking-wide uppercase">done</span>
+              </div>
+            ) : isAllCompleted ? (
+              <div className="flex items-center justify-between bg-gradient-to-r from-emerald-400 to-teal-500 text-white py-0.5 pl-2 pr-0.5 rounded shadow-sm">
+                <div className="flex items-center gap-1 flex-1 justify-center">
+                  <span className="text-xs">✨</span>
+                  <span className="text-xs font-bold tracking-wide">Ready!</span>
+                  <span className="text-xs">✨</span>
+                </div>
+                {onComplete && (
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onComplete();
+                    }}
+                    className="flex-shrink-0 bg-white text-teal-600 hover:bg-teal-50 transition-colors shadow-sm rounded px-2 py-0.5 text-[10px] font-bold leading-tight ml-1"
+                  >
+                    完了
+                  </button>
+                )}
               </div>
             ) : (
               <div className="flex items-center gap-2">

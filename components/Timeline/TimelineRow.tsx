@@ -24,6 +24,7 @@ interface TimelineRowProps {
     onDrop: (e: React.DragEvent, dateStr: string, columnId: string) => void;
     onCellClick: (dateStr: string, columnId: string) => void;
     onTaskClick: (task: Task) => void;
+    onTaskComplete?: (taskId: string) => void;
     onTaskDragStart: (e: React.DragEvent, task: Task) => void;
     onTaskDragEnd: () => void;
 
@@ -37,7 +38,7 @@ interface TimelineRowProps {
 export const TimelineRow: React.FC<TimelineRowProps> = React.memo(({
     dateStr, day, currentDayDate, isWeekend, isToday, isCompactMode, ROW_HEIGHT,
     events, maxLanes, eventLanes, columns, groupBy, tasks, dragGhost,
-    onDragOver, onDrop, onCellClick, onTaskClick, onTaskDragStart, onTaskDragEnd,
+    onDragOver, onDrop, onCellClick, onTaskClick, onTaskComplete, onTaskDragStart, onTaskDragEnd,
     onEventDragStart, onEventClick, monthIdx, dayIdx
 }) => {
     return (
@@ -170,6 +171,7 @@ export const TimelineRow: React.FC<TimelineRowProps> = React.memo(({
                                         id={'task-card-' + task.id}
                                         task={task}
                                         onClick={() => !isCompactMode && onTaskClick(task)}
+                                        onComplete={() => onTaskComplete?.(task.id)}
                                         onDragStart={onTaskDragStart}
                                         onDragEnd={onTaskDragEnd}
                                         isCompact={isCompactMode}
